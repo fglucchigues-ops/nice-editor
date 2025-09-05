@@ -326,7 +326,6 @@ export function ActionBar({
               </div>
             )}
           </div>
-          ))
         </div>
       </div>
       
