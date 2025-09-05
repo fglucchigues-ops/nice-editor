@@ -79,7 +79,6 @@ export function WritingEditor({
       neutralSpan.style.cssText = 'font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important;';
       neutralSpan.setAttribute('data-neutral-format', 'true');
       
-      // Ajouter l'indicateur et un espace invisible
       const anchor = window.document.createTextNode('\u200B'); // Zero-width space
       neutralSpan.appendChild(anchor);
       
