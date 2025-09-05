@@ -1,0 +1,1 @@
+nice-editor
