@@ -107,7 +107,10 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
           document.execCommand('unlink', false);
           document.execCommand('hiliteColor', false, 'transparent');
           document.execCommand('backColor', false, 'transparent');
-          document.execCommand('foreColor', false, 'inherit');
+          // Remettre la couleur par défaut selon le thème
+          const isDark = document.body.classList.contains('dark');
+          const defaultColor = isDark ? '#f3f4f6' : '#111827'; // gray-100 pour dark, gray-900 pour light
+          document.execCommand('foreColor', false, defaultColor);
         }
         
         // 3. Forcer le retour à un paragraphe normal
@@ -138,7 +141,10 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       
       // Créer un span neutre invisible
       const neutralSpan = document.createElement('span');
-      neutralSpan.style.cssText = 'font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important;';
+      // Remettre la couleur par défaut selon le thème
+      const isDark = document.body.classList.contains('dark');
+      const defaultColor = isDark ? '#f3f4f6' : '#111827'; // gray-100 pour dark, gray-900 pour light
+      neutralSpan.style.cssText = `font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important; color: ${defaultColor} !important;`;
       neutralSpan.setAttribute('data-neutral-format', 'true');
       
       // Ajouter un espace invisible
@@ -169,6 +175,10 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     } catch (error) {
       document.execCommand('formatBlock', false, 'p');
       document.execCommand('removeFormat', false);
+      // Remettre la couleur par défaut
+      const isDark = document.body.classList.contains('dark');
+      const defaultColor = isDark ? '#f3f4f6' : '#111827';
+      document.execCommand('foreColor', false, defaultColor);
     }
   }, [clearFormatting, editorRef]);
 
