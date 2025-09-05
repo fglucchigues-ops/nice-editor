@@ -1,6 +1,37 @@
 import { useCallback, RefObject } from 'react';
 
 export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
+  // Fonction pour obtenir les couleurs selon le thème actuel
+  const getColors = useCallback(() => {
+    const isDarkMode = document.body.classList.contains('dark');
+    
+    if (isDarkMode) {
+      return {
+        colors: {
+          yellow: '#d97706',
+          blue: '#2563eb',
+          green: '#16a34a',
+          pink: '#db2777',
+          purple: '#9333ea',
+          orange: '#ea580c'
+        },
+        textColor: '#ffffff'
+      };
+    } else {
+      return {
+        colors: {
+          yellow: '#fef3c7',
+          blue: '#dbeafe',
+          green: '#d1fae5',
+          pink: '#fce7f3',
+          purple: '#ede9fe',
+          orange: '#fed7aa'
+        },
+        textColor: null // Pas de couleur de texte forcée en mode clair
+      };
+    }
+  }, []);
+
   const formatText = useCallback((format: string) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
@@ -37,38 +68,18 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
   }, [editorRef]);
 
   const highlightText = useCallback((color: string) => {
-    const colors: Record<string, string> = {
-      yellow: '#fef3c7',
-      blue: '#dbeafe',
-      green: '#d1fae5',
-      pink: '#fce7f3',
-      purple: '#ede9fe',
-      orange: '#fed7aa'
-    };
+    const { colors, textColor } = getColors();
+    const colorToUse = colors[color];
     
-    // Couleurs pour le mode sombre avec texte blanc pour contraste optimal
-    const darkColors: Record<string, string> = {
-      yellow: '#d97706', // Orange foncé pour le jaune
-      blue: '#2563eb',   // Bleu moyen
-      green: '#16a34a',  // Vert moyen
-      pink: '#db2777',   // Rose moyen
-      purple: '#9333ea', // Violet moyen
-      orange: '#ea580c'  // Orange moyen
-    };
-    
-    // Détecter le mode sombre
-    const isDarkMode = document.body.classList.contains('dark');
-    const colorToUse = isDarkMode ? darkColors[color] : colors[color];
-    
-    // En mode sombre, on applique aussi une couleur de texte blanche pour le contraste
-    if (isDarkMode) {
+    if (colorToUse) {
       document.execCommand('hiliteColor', false, colorToUse);
-      // Appliquer une couleur de texte blanche pour le contraste
-      document.execCommand('foreColor', false, '#ffffff');
-    } else {
-      document.execCommand('hiliteColor', false, colorToUse);
+      
+      // Appliquer la couleur de texte si nécessaire (mode sombre)
+      if (textColor) {
+        document.execCommand('foreColor', false, textColor);
+      }
     }
-  }, []);
+  }, [getColors]);
 
   const clearFormatting = useCallback(() => {
     const selection = window.getSelection();
@@ -177,6 +188,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
   // Fonction pour détecter la couleur de surlignage active
   const getActiveHighlight = useCallback(() => {
     try {
+      const { colors } = getColors();
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return null;
       
@@ -193,20 +205,22 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
         }
       );
       
-      const colorMap = {
-        'rgb(254, 243, 199)': 'yellow',
-        'rgba(254, 243, 199, 1)': 'yellow',
-        'rgb(219, 234, 254)': 'blue',
-        'rgba(219, 234, 254, 1)': 'blue',
-        'rgb(209, 250, 229)': 'green',
-        'rgba(209, 250, 229, 1)': 'green',
-        'rgb(252, 231, 243)': 'pink',
-        'rgba(252, 231, 243, 1)': 'pink',
-        'rgb(237, 233, 254)': 'purple',
-        'rgba(237, 233, 254, 1)': 'purple',
-        'rgb(254, 215, 170)': 'orange',
-        'rgba(254, 215, 170, 1)': 'orange'
-      };
+      // Créer le mapping des couleurs basé sur le thème actuel
+      const colorMap: Record<string, string> = {};
+      
+      Object.entries(colors).forEach(([colorName, colorValue]) => {
+        // Convertir hex en rgb pour la comparaison
+        const hex = colorValue.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        const rgbString = `rgb(${r}, ${g}, ${b})`;
+        const rgbaString = `rgba(${r}, ${g}, ${b}, 1)`;
+        
+        colorMap[rgbString] = colorName;
+        colorMap[rgbaString] = colorName;
+      });
       
       // Vérifier l'élément de départ
       let element = range.startContainer;
@@ -234,41 +248,11 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
         node = walker.nextNode();
       }
       
-      // Vérifier aussi les couleurs du mode sombre
-      const darkColorMap = {
-        'rgb(217, 119, 6)': 'yellow',
-        'rgba(217, 119, 6, 1)': 'yellow',
-        'rgb(37, 99, 235)': 'blue',
-        'rgba(37, 99, 235, 1)': 'blue',
-        'rgb(22, 163, 74)': 'green',
-        'rgba(22, 163, 74, 1)': 'green',
-        'rgb(219, 39, 119)': 'pink',
-        'rgba(219, 39, 119, 1)': 'pink',
-        'rgb(147, 51, 234)': 'purple',
-        'rgba(147, 51, 234, 1)': 'purple',
-        'rgb(234, 88, 12)': 'orange',
-        'rgba(234, 88, 12, 1)': 'orange'
-      };
-      
-      // Vérifier avec les couleurs du mode sombre
-      element = range.startContainer;
-      if (element.nodeType === Node.TEXT_NODE) {
-        element = element.parentElement;
-      }
-      
-      while (element && element !== editorRef.current) {
-        const bgColor = window.getComputedStyle(element).backgroundColor;
-        if (darkColorMap[bgColor]) {
-          return darkColorMap[bgColor];
-        }
-        element = element.parentElement;
-      }
-      
       return null;
     } catch (e) {
       return null;
     }
-  }, [editorRef]);
+  }, [editorRef, getColors]);
 
   return {
     formatText,

@@ -22,13 +22,40 @@ export function FormatToolbar({
   isFormatActive,
   getActiveHighlight
 }: Props) {
+  // Couleurs qui s'adaptent au thème
+  const isDarkMode = document.body.classList.contains('dark');
+  
   const highlightColors = [
-    { name: 'yellow', color: 'bg-yellow-200', title: 'Jaune (Ctrl+1)' },
-    { name: 'blue', color: 'bg-blue-200', title: 'Bleu (Ctrl+2)' },
-    { name: 'green', color: 'bg-green-200', title: 'Vert (Ctrl+3)' },
-    { name: 'pink', color: 'bg-pink-200', title: 'Rose (Ctrl+4)' },
-    { name: 'purple', color: 'bg-purple-200', title: 'Violet (Ctrl+5)' },
-    { name: 'orange', color: 'bg-orange-200', title: 'Orange (Ctrl+6)' }
+    { 
+      name: 'yellow', 
+      color: isDarkMode ? 'bg-orange-600' : 'bg-yellow-200', 
+      title: 'Jaune (Ctrl+1)' 
+    },
+    { 
+      name: 'blue', 
+      color: isDarkMode ? 'bg-blue-600' : 'bg-blue-200', 
+      title: 'Bleu (Ctrl+2)' 
+    },
+    { 
+      name: 'green', 
+      color: isDarkMode ? 'bg-green-600' : 'bg-green-200', 
+      title: 'Vert (Ctrl+3)' 
+    },
+    { 
+      name: 'pink', 
+      color: isDarkMode ? 'bg-pink-600' : 'bg-pink-200', 
+      title: 'Rose (Ctrl+4)' 
+    },
+    { 
+      name: 'purple', 
+      color: isDarkMode ? 'bg-purple-600' : 'bg-purple-200', 
+      title: 'Violet (Ctrl+5)' 
+    },
+    { 
+      name: 'orange', 
+      color: isDarkMode ? 'bg-orange-500' : 'bg-orange-200', 
+      title: 'Orange (Ctrl+6)' 
+    }
   ];
 
   const activeHighlight = getActiveHighlight();
