@@ -22,9 +22,6 @@ export function FormatToolbar({
   isFormatActive,
   getActiveHighlight
 }: Props) {
-  // Couleurs qui s'adaptent au thème
-  const isDarkMode = document.body.classList.contains('dark');
-  
   const highlightColors = [
     { 
       name: 'yellow', 
