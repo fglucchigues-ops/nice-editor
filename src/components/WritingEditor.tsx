@@ -35,6 +35,7 @@ export function WritingEditor({
   const lastContentRef = useRef<string>('');
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
+  const { formatAsHeading } = useTextFormatting(editorRef);
   const { selection, showToolbar, toolbarPosition } = useTextSelection(editorRef);
 
   // Fonction pour sauvegarder la position du curseur

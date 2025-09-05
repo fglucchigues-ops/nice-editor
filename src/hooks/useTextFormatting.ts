@@ -18,19 +18,38 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
 
   const formatText = useCallback((format: string) => {
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+    if (!selection || selection.rangeCount === 0) return;
     
-    if (format === 'bold' || format === 'italic') {
-      document.execCommand(format, false);
-    } else if (format.startsWith('h')) {
-      formatAsHeading(parseInt(format.charAt(1)));
+    // Si pas de sélection, on prépare le formatage pour le texte suivant
+    if (selection.isCollapsed) {
+      if (format === 'bold' || format === 'italic') {
+        document.execCommand(format, false);
+      } else if (format.startsWith('h')) {
+        // Pour les titres sans sélection, on change le bloc courant
+        document.execCommand('formatBlock', false, format);
+      }
+    } else {
+      // Avec sélection, formatage normal
+      if (format === 'bold' || format === 'italic') {
+        document.execCommand(format, false);
+      } else if (format.startsWith('h')) {
+        formatAsHeading(parseInt(format.charAt(1)));
+      }
     }
   }, []);
 
   const formatAsHeading = useCallback((level: number) => {
     try {
-      // Méthode simple et efficace avec formatBlock
-      document.execCommand('formatBlock', false, `h${level}`);
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      
+      if (selection.isCollapsed) {
+        // Sans sélection, changer le bloc courant
+        document.execCommand('formatBlock', false, `h${level}`);
+      } else {
+        // Avec sélection, formatBlock sur la sélection
+        document.execCommand('formatBlock', false, `h${level}`);
+      }
       
       // Appliquer les styles CSS pour assurer la cohérence visuelle
       setTimeout(() => {
@@ -56,6 +75,10 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const colorToUse = colors[color];
     
     if (colorToUse) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      
+      // Fonctionne avec ou sans sélection
       document.execCommand('hiliteColor', false, colorToUse);
       
       // Appliquer la couleur de texte si nécessaire (mode sombre)
