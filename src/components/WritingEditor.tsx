@@ -182,6 +182,10 @@ export function WritingEditor({
   // Fonctions undo/redo utilisant l'API native du navigateur
   const handleUndo = useCallback(() => {
     try {
+      if (!document) {
+        console.error('Document object is not available');
+        return;
+      }
       document.execCommand('undo');
       // Mettre à jour après l'undo natif
       setTimeout(() => {
@@ -197,6 +201,10 @@ export function WritingEditor({
 
   const handleRedo = useCallback(() => {
     try {
+      if (!document) {
+        console.error('Document object is not available');
+        return;
+      }
       document.execCommand('redo');
       // Mettre à jour après le redo natif
       setTimeout(() => {
