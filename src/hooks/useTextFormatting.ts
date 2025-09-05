@@ -8,31 +8,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     if (format === 'bold' || format === 'italic') {
       document.execCommand(format, false);
     } else if (format.startsWith('h')) {
-      const level = format.charAt(1);
-      const fontSize = level === '1' ? '2em' : level === '2' ? '1.5em' : '1.25em';
-      
-      const range = selection.getRangeAt(0);
-      const heading = document.createElement(format);
-      heading.style.fontSize = fontSize;
-      heading.style.fontWeight = 'bold';
-      heading.style.lineHeight = '1.2';
-      heading.style.margin = '1em 0 0.5em 0';
-      heading.style.display = 'block';
-      
-      try {
-        const contents = range.extractContents();
-        heading.appendChild(contents);
-        range.insertNode(heading);
-        
-        // Clear selection and position cursor after heading
-        selection.removeAllRanges();
-        const newRange = document.createRange();
-        newRange.setStartAfter(heading);
-        newRange.collapse(true);
-        selection.addRange(newRange);
-      } catch (e) {
-        console.error('Error formatting text:', e);
-      }
+      formatAsHeading(parseInt(format.charAt(1)));
     }
   }, []);
 
@@ -43,48 +19,408 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const range = selection.getRangeAt(0);
     if (range.collapsed) return;
     
-    // Sauvegarder le texte sélectionné
-    const selectedText = range.toString();
+    try {
+      // 1. RESET COMPLET : Supprimer tous les formatages de titre existants
+      const fragment = range.extractContents();
+      
+      // Fonction récursive pour nettoyer tous les titres
+      const cleanTitles = (node: Node): DocumentFragment => {
+        const cleanFragment = document.createDocumentFragment();
+        
+        node.childNodes.forEach(child => {
+          if (child.nodeType === Node.ELEMENT_NODE) {
+            const element = child as Element;
+            // Si c'est un titre (h1, h2, h3, etc.), extraire le contenu
+            if (/^h[1-6]$/i.test(element.tagName)) {
+              // Récursivement nettoyer le contenu du titre
+              const cleanedContent = cleanTitles(element);
+              cleanFragment.appendChild(cleanedContent);
+            } else {
+              // Pour les autres éléments, les garder mais nettoyer leur contenu
+              const newElement = element.cloneNode(false) as Element;
+              const cleanedContent = cleanTitles(element);
+              newElement.appendChild(cleanedContent);
+              cleanFragment.appendChild(newElement);
+            }
+          } else {
+            // Nœuds de texte : les garder tels quels
+            cleanFragment.appendChild(child.cloneNode(true));
+          }
+        });
+        
+        return cleanFragment;
+      };
+      
+      // Nettoyer le fragment de tous les titres
+      const cleanedFragment = cleanTitles(fragment);
+      
+      // 2. Extraire le texte pur
+      const textContent = cleanedFragment.textContent || '';
+      
+      // 3. Créer le nouveau titre avec le texte nettoyé
+      const headingTag = `h${level}`;
+      const heading = document.createElement(headingTag);
+      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+      heading.style.fontWeight = 'bold';
+      heading.style.lineHeight = '1.2';
+      heading.style.margin = '1em 0 0.5em 0';
+      heading.style.display = 'block';
+      heading.textContent = textContent;
+      
+      // 4. Insérer le nouveau titre
+      range.insertNode(heading);
+      
+      // 5. Positionner le curseur après le titre
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.setStartAfter(heading);
+      newRange.collapse(true);
+      selection.addRange(newRange);
+      
+      // 6. Nettoyage final du DOM
+      if (editorRef.current) {
+        // Supprimer les titres vides
+        const emptyHeadings = editorRef.current.querySelectorAll('h1:empty, h2:empty, h3:empty, h4:empty, h5:empty, h6:empty');
+        emptyHeadings.forEach(h => h.remove());
+        
+        // Supprimer les titres imbriqués restants
+        const nestedHeadings = editorRef.current.querySelectorAll('h1 h1, h1 h2, h1 h3, h2 h1, h2 h2, h2 h3, h3 h1, h3 h2, h3 h3');
+        nestedHeadings.forEach(nested => {
+          const textContent = nested.textContent || '';
+          nested.replaceWith(document.createTextNode(textContent));
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error formatting heading:', error);
+      // Fallback : formatage simple
+      const selectedText = range.toString();
+      range.deleteContents();
+      
+      const heading = document.createElement(`h${level}`);
+      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+      heading.style.fontWeight = 'bold';
+      heading.style.lineHeight = '1.2';
+      heading.style.margin = '1em 0 0.5em 0';
+      heading.style.display = 'block';
+      heading.textContent = selectedText;
+      
+      range.insertNode(heading);
+      
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.setStartAfter(heading);
+      newRange.collapse(true);
+      selection.addRange(newRange);
+    }
+  }, [editorRef]);
+
+  const formatAsHeading = useCallback((level: number) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
     
-    // Supprimer le contenu sélectionné
-    range.deleteContents();
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return;
     
-    // Créer le nouveau titre avec le texte
-    const headingTag = `h${level}`;
-    const heading = document.createElement(headingTag);
-    heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
-    heading.style.fontWeight = 'bold';
-    heading.style.lineHeight = '1.2';
-    heading.style.margin = '1em 0 0.5em 0';
-    heading.style.display = 'block';
-    heading.textContent = selectedText;
+    try {
+      // 1. RESET COMPLET : Supprimer tous les formatages de titre existants
+      const fragment = range.extractContents();
+      
+      // Fonction récursive pour nettoyer tous les titres
+      const cleanTitles = (node: Node): DocumentFragment => {
+        const cleanFragment = document.createDocumentFragment();
+        
+        node.childNodes.forEach(child => {
+          if (child.nodeType === Node.ELEMENT_NODE) {
+            const element = child as Element;
+            // Si c'est un titre (h1, h2, h3, etc.), extraire le contenu
+            if (/^h[1-6]$/i.test(element.tagName)) {
+              // Récursivement nettoyer le contenu du titre
+              const cleanedContent = cleanTitles(element);
+              cleanFragment.appendChild(cleanedContent);
+            } else {
+              // Pour les autres éléments, les garder mais nettoyer leur contenu
+              const newElement = element.cloneNode(false) as Element;
+              const cleanedContent = cleanTitles(element);
+              newElement.appendChild(cleanedContent);
+              cleanFragment.appendChild(newElement);
+            }
+          } else {
+            // Nœuds de texte : les garder tels quels
+            cleanFragment.appendChild(child.cloneNode(true));
+          }
+        });
+        
+        return cleanFragment;
+      };
+      
+      // Nettoyer le fragment de tous les titres
+      const cleanedFragment = cleanTitles(fragment);
+      
+      // 2. Extraire le texte pur
+      const textContent = cleanedFragment.textContent || '';
+      
+      // 3. Créer le nouveau titre avec le texte nettoyé
+      const headingTag = `h${level}`;
+      const heading = document.createElement(headingTag);
+      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+      heading.style.fontWeight = 'bold';
+      heading.style.lineHeight = '1.2';
+      heading.style.margin = '1em 0 0.5em 0';
+      heading.style.display = 'block';
+      heading.textContent = textContent;
+      
+      // 4. Insérer le nouveau titre
+      range.insertNode(heading);
+      
+      // 5. Positionner le curseur après le titre
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.setStartAfter(heading);
+      newRange.collapse(true);
+      selection.addRange(newRange);
+      
+      // 6. Nettoyage final du DOM
+      if (editorRef.current) {
+        // Supprimer les titres vides
+        const emptyHeadings = editorRef.current.querySelectorAll('h1:empty, h2:empty, h3:empty, h4:empty, h5:empty, h6:empty');
+        emptyHeadings.forEach(h => h.remove());
+        
+        // Supprimer les titres imbriqués restants
+        const nestedHeadings = editorRef.current.querySelectorAll('h1 h1, h1 h2, h1 h3, h2 h1, h2 h2, h2 h3, h3 h1, h3 h2, h3 h3');
+        nestedHeadings.forEach(nested => {
+          const textContent = nested.textContent || '';
+          nested.replaceWith(document.createTextNode(textContent));
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error formatting heading:', error);
+      // Fallback : formatage simple
+      const selectedText = range.toString();
+      range.deleteContents();
+      
+      const heading = document.createElement(`h${level}`);
+      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+      heading.style.fontWeight = 'bold';
+      heading.style.lineHeight = '1.2';
+      heading.style.margin = '1em 0 0.5em 0';
+      heading.style.display = 'block';
+      heading.textContent = selectedText;
+      
+      range.insertNode(heading);
+      
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.setStartAfter(heading);
+      newRange.collapse(true);
+      selection.addRange(newRange);
+    }
+  }, [editorRef]);
+
+  const formatAsHeading = useCallback((level: number) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
     
-    // Insérer le titre
-    range.insertNode(heading);
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return;
     
-    // Positionner le curseur après le titre
-    selection.removeAllRanges();
-    const newRange = document.createRange();
-    newRange.setStartAfter(heading);
-    newRange.collapse(true);
-    selection.addRange(newRange);
+    try {
+      // 1. RESET COMPLET : Supprimer tous les formatages de titre existants
+      const fragment = range.extractContents();
+      
+      // Fonction récursive pour nettoyer tous les titres
+      const cleanTitles = (node: Node): DocumentFragment => {
+        const cleanFragment = document.createDocumentFragment();
+        
+        node.childNodes.forEach(child => {
+          if (child.nodeType === Node.ELEMENT_NODE) {
+            const element = child as Element;
+            // Si c'est un titre (h1, h2, h3, etc.), extraire le contenu
+            if (/^h[1-6]$/i.test(element.tagName)) {
+              // Récursivement nettoyer le contenu du titre
+              const cleanedContent = cleanTitles(element);
+              cleanFragment.appendChild(cleanedContent);
+            } else {
+              // Pour les autres éléments, les garder mais nettoyer leur contenu
+              const newElement = element.cloneNode(false) as Element;
+              const cleanedContent = cleanTitles(element);
+              newElement.appendChild(cleanedContent);
+              cleanFragment.appendChild(newElement);
+            }
+          } else {
+            // Nœuds de texte : les garder tels quels
+            cleanFragment.appendChild(child.cloneNode(true));
+          }
+        });
+        
+        return cleanFragment;
+      };
+      
+      // Nettoyer le fragment de tous les titres
+      const cleanedFragment = cleanTitles(fragment);
+      
+      // 2. Extraire le texte pur
+      const textContent = cleanedFragment.textContent || '';
+      
+      // 3. Créer le nouveau titre avec le texte nettoyé
+      const headingTag = `h${level}`;
+      const heading = document.createElement(headingTag);
+      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+      heading.style.fontWeight = 'bold';
+      heading.style.lineHeight = '1.2';
+      heading.style.margin = '1em 0 0.5em 0';
+      heading.style.display = 'block';
+      heading.textContent = textContent;
+      
+      // 4. Insérer le nouveau titre
+      range.insertNode(heading);
+      
+      // 5. Positionner le curseur après le titre
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.setStartAfter(heading);
+      newRange.collapse(true);
+      selection.addRange(newRange);
+      
+      // 6. Nettoyage final du DOM
+      if (editorRef.current) {
+        // Supprimer les titres vides
+        const emptyHeadings = editorRef.current.querySelectorAll('h1:empty, h2:empty, h3:empty, h4:empty, h5:empty, h6:empty');
+        emptyHeadings.forEach(h => h.remove());
+        
+        // Supprimer les titres imbriqués restants
+        const nestedHeadings = editorRef.current.querySelectorAll('h1 h1, h1 h2, h1 h3, h2 h1, h2 h2, h2 h3, h3 h1, h3 h2, h3 h3');
+        nestedHeadings.forEach(nested => {
+          const textContent = nested.textContent || '';
+          nested.replaceWith(document.createTextNode(textContent));
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error formatting heading:', error);
+      // Fallback : formatage simple
+      const selectedText = range.toString();
+      range.deleteContents();
+      
+      const heading = document.createElement(`h${level}`);
+      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+      heading.style.fontWeight = 'bold';
+      heading.style.lineHeight = '1.2';
+      heading.style.margin = '1em 0 0.5em 0';
+      heading.style.display = 'block';
+      heading.textContent = selectedText;
+      
+      range.insertNode(heading);
+      
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.setStartAfter(heading);
+      newRange.collapse(true);
+      selection.addRange(newRange);
+    }
+  }, [editorRef]);
+
+  const formatAsHeading = useCallback((level: number) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
     
-    // Nettoyer les titres orphelins dans l'éditeur
-    if (editorRef.current) {
-      const allHeadings = editorRef.current.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      allHeadings.forEach(h => {
-        // Si le titre est vide ou contient seulement des espaces
-        if (!h.textContent?.trim()) {
-          h.remove();
-        }
-        // Si le titre est imbriqué dans un autre titre
-        const parentHeading = h.closest('h1, h2, h3, h4, h5, h6');
-        if (parentHeading && parentHeading !== h) {
-          // Extraire le contenu du titre imbriqué
-          const textContent = h.textContent || '';
-          h.replaceWith(document.createTextNode(textContent));
-        }
-      });
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return;
+    
+    try {
+      // 1. RESET COMPLET : Supprimer tous les formatages de titre existants
+      const fragment = range.extractContents();
+      
+      // Fonction récursive pour nettoyer tous les titres
+      const cleanTitles = (node: Node): DocumentFragment => {
+        const cleanFragment = document.createDocumentFragment();
+        
+        node.childNodes.forEach(child => {
+          if (child.nodeType === Node.ELEMENT_NODE) {
+            const element = child as Element;
+            // Si c'est un titre (h1, h2, h3, etc.), extraire le contenu
+            if (/^h[1-6]$/i.test(element.tagName)) {
+              // Récursivement nettoyer le contenu du titre
+              const cleanedContent = cleanTitles(element);
+              cleanFragment.appendChild(cleanedContent);
+            } else {
+              // Pour les autres éléments, les garder mais nettoyer leur contenu
+              const newElement = element.cloneNode(false) as Element;
+              const cleanedContent = cleanTitles(element);
+              newElement.appendChild(cleanedContent);
+              cleanFragment.appendChild(newElement);
+            }
+          } else {
+            // Nœuds de texte : les garder tels quels
+            cleanFragment.appendChild(child.cloneNode(true));
+          }
+        });
+        
+        return cleanFragment;
+      };
+      
+      // Nettoyer le fragment de tous les titres
+      const cleanedFragment = cleanTitles(fragment);
+      
+      // 2. Extraire le texte pur
+      const textContent = cleanedFragment.textContent || '';
+      
+      // 3. Créer le nouveau titre avec le texte nettoyé
+      const headingTag = `h${level}`;
+      const heading = document.createElement(headingTag);
+      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+      heading.style.fontWeight = 'bold';
+      heading.style.lineHeight = '1.2';
+      heading.style.margin = '1em 0 0.5em 0';
+      heading.style.display = 'block';
+      heading.textContent = textContent;
+      
+      // 4. Insérer le nouveau titre
+      range.insertNode(heading);
+      
+      // 5. Positionner le curseur après le titre
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.setStartAfter(heading);
+      newRange.collapse(true);
+      selection.addRange(newRange);
+      
+      // 6. Nettoyage final du DOM
+      if (editorRef.current) {
+        // Supprimer les titres vides
+        const emptyHeadings = editorRef.current.querySelectorAll('h1:empty, h2:empty, h3:empty, h4:empty, h5:empty, h6:empty');
+        emptyHeadings.forEach(h => h.remove());
+        
+        // Supprimer les titres imbriqués restants
+        const nestedHeadings = editorRef.current.querySelectorAll('h1 h1, h1 h2, h1 h3, h2 h1, h2 h2, h2 h3, h3 h1, h3 h2, h3 h3');
+        nestedHeadings.forEach(nested => {
+          const textContent = nested.textContent || '';
+          nested.replaceWith(document.createTextNode(textContent));
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error formatting heading:', error);
+      // Fallback : formatage simple
+      const selectedText = range.toString();
+      range.deleteContents();
+      
+      const heading = document.createElement(`h${level}`);
+      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+      heading.style.fontWeight = 'bold';
+      heading.style.lineHeight = '1.2';
+      heading.style.margin = '1em 0 0.5em 0';
+      heading.style.display = 'block';
+      heading.textContent = selectedText;
+      
+      range.insertNode(heading);
+      
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.setStartAfter(heading);
+      newRange.collapse(true);
+      selection.addRange(newRange);
     }
   }, [editorRef]);
 

@@ -33,20 +33,25 @@ export function ActionBar({
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Track window width changes
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
+      // Déterminer si on doit collapser basé sur l'espace disponible
+      setIsCollapsed(window.innerWidth < 768); // md breakpoint
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const isSmallScreen = windowWidth < 640;
-  const isVerySmallScreen = windowWidth < 480;
+  // Initialiser isCollapsed au premier rendu
+  useEffect(() => {
+    setIsCollapsed(window.innerWidth < 768);
+  }, []);
 
   const handleDelete = () => {
     if (hasDocument && confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
@@ -165,28 +170,51 @@ export function ActionBar({
     }
   };
 
-  // On very small screens, show only settings button
-  if (isVerySmallScreen) {
-    return (
-      <>
-        {/* Settings button in top-right */}
-        <div className="fixed top-4 right-4 z-40">
-          <div className="bg-white dark:bg-gray-800 rounded-full shadow-xl border border-gray-200 dark:border-gray-700 p-2">
-            <button
-              onClick={onOpenSettings}
-              className="p-2 rounded-full transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-              title="Paramètres"
-            >
-              <SettingsIcon className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </>
-    );
-  }
+  // Actions définies une seule fois
+  const actions = [
+    {
+      icon: Save,
+      onClick: onSave,
+      disabled: !hasUnsavedChanges,
+      className: hasUnsavedChanges ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400',
+      title: 'Sauvegarder (Ctrl+S)',
+      label: 'Sauvegarder'
+    },
+    {
+      icon: FileText,
+      onClick: onViewDocuments,
+      title: 'Documents',
+      label: 'Documents'
+    },
+    {
+      icon: SettingsIcon,
+      onClick: onOpenSettings,
+      title: 'Paramètres',
+      label: 'Paramètres'
+    },
+    {
+      icon: Download,
+      onClick: handleExportPDF,
+      title: 'Export PDF',
+      label: 'Export PDF'
+    },
+    {
+      icon: Download,
+      onClick: handleExportWord,
+      title: 'Export Word',
+      label: 'Export Word'
+    },
+    ...(hasDocument ? [{
+      icon: Trash2,
+      onClick: handleDelete,
+      className: 'text-red-500 dark:text-red-400',
+      title: 'Supprimer',
+      label: 'Supprimer'
+    }] : [])
+  ];
 
-  // On small screens, show collapsible action menu
-  if (isSmallScreen) {
+  // Mode collapsé : bouton + menu
+  if (isCollapsed) {
     return (
       <>
         {/* Settings button in top-right */}
@@ -202,64 +230,27 @@ export function ActionBar({
           </div>
         </div>
         
-        {/* Collapsible action menu at bottom */}
+        {/* Menu collapsé en bas à droite */}
         <div className="fixed bottom-4 right-4 z-40">
           <div className="relative">
-            {/* Action Menu */}
+            {/* Menu des actions */}
             {showActionMenu && (
-              <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48">
+              <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-48 animate-slide-up">
                 <div className="space-y-1">
-                  <button
-                    onClick={() => {
-                      onSave();
-                      setShowActionMenu(false);
-                    }}
-                    disabled={!hasUnsavedChanges}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-left ${hasUnsavedChanges ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}
-                  >
-                    <Save className="w-4 h-4" />
-                    <span className="text-sm">Sauvegarder</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      onViewDocuments();
-                      setShowActionMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-left"
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span className="text-sm">Documents</span>
-                  </button>
-                  
-                  <button
-                    onClick={handleExportPDF}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-left"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="text-sm">Export PDF</span>
-                  </button>
-                  
-                  <button
-                    onClick={handleExportWord}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-left"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="text-sm">Export Word</span>
-                  </button>
-                  
-                  {hasDocument && (
+                  {actions.map((action, index) => (
                     <button
+                      key={index}
                       onClick={() => {
-                        handleDelete();
+                        action.onClick();
                         setShowActionMenu(false);
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 dark:text-red-400 text-left"
+                      disabled={action.disabled}
+                      className={`w-full flex items-center gap-3 px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${action.className || 'text-gray-700 dark:text-gray-300'}`}
                     >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="text-sm">Supprimer</span>
+                      <action.icon className="w-4 h-4" />
+                      <span>{action.label}</span>
                     </button>
-                  )}
+                  ))}
                 </div>
               </div>
             )}
@@ -268,7 +259,7 @@ export function ActionBar({
             <div className="bg-white dark:bg-gray-800 rounded-full shadow-xl border border-gray-200 dark:border-gray-700 p-2">
               <button
                 onClick={() => setShowActionMenu(!showActionMenu)}
-                className="p-3 rounded-full transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                className="p-3 rounded-full transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:scale-105"
                 title="Actions"
               >
                 <MoreHorizontal className="w-5 h-5" />
@@ -288,44 +279,25 @@ export function ActionBar({
     );
   }
 
-  // Full action bar for larger screens
-  const actions = [
-    {
-      icon: Save,
-      onClick: onSave,
-      disabled: !hasUnsavedChanges,
-      className: hasUnsavedChanges ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400',
-      title: 'Sauvegarder (Ctrl+S)'
-    },
-    {
-      icon: FileText,
-      onClick: onViewDocuments,
-      title: 'Documents'
-    },
-    {
-      icon: SettingsIcon,
-      onClick: onOpenSettings,
-      title: 'Paramètres'
-    },
+  // Barre d'actions complète pour les grands écrans
+  const mainActions = [
+    actions[0], // Save
+    actions[1], // Documents
+    actions[2], // Settings
     {
       icon: Download,
       onClick: () => setShowExportMenu(!showExportMenu),
       title: 'Exporter',
       hasMenu: true
     },
-    ...(hasDocument ? [{
-      icon: Trash2,
-      onClick: handleDelete,
-      className: 'text-red-500 dark:text-red-400',
-      title: 'Supprimer'
-    }] : [])
+    ...(hasDocument ? [actions[actions.length - 1]] : []) // Delete si présent
   ];
 
   return (
     <div ref={containerRef} className="fixed bottom-6 right-6 z-40">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2">
         <div className="flex items-center gap-1">
-          {actions.map((action, index) => (
+          {mainActions.map((action, index) => (
             <div key={index} className="relative">
               <button
                 onClick={action.onClick}
@@ -337,7 +309,36 @@ export function ActionBar({
               </button>
               
               {action.hasMenu && showExportMenu && (
-                <ExportMenu
+                <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 z-10">
+                  <button
+                    onClick={handleExportPDF}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                  >
+                    PDF
+                  </button>
+                  <button
+                    onClick={handleExportWord}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                  >
+                    Word
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Click outside to close export menu */}
+      {showExportMenu && (
+        <div
+          className="fixed inset-0 z-30"
+          onClick={() => setShowExportMenu(false)}
+        />
+      )}
+    </div>
+  );
+}
                   onClose={() => setShowExportMenu(false)}
                   settings={settings}
                 />

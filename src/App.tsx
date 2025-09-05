@@ -22,7 +22,7 @@ function Toast({ message, type = 'info', onClose }: ToastProps) {
   }, [onClose]);
 
   return (
-    <div className="fixed bottom-6 left-1/2 bg-gray-800 dark:bg-gray-700 text-white px-4 py-2 rounded-full shadow-lg z-50 animate-slide-up opacity-90 text-sm" style={{ transform: 'translateX(-50%)' }}>
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800 dark:bg-gray-700 text-white px-4 py-2 rounded-full shadow-lg z-50 animate-slide-up opacity-90 text-sm">
       {message}
     </div>
   );
