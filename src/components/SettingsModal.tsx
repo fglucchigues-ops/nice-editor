@@ -8,7 +8,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function SettingsModal({ settings, onUpdateSetting, onClose, onSave }: Props) {
+export function SettingsModal({ settings, onUpdateSetting, onClose }: Props) {
   const fontOptions = [
     { value: "'Inter', sans-serif", label: 'Inter (Sans-serif)' },
     { value: "'Libre Baskerville', serif", label: 'Libre Baskerville (Serif)' },
