@@ -70,6 +70,12 @@ function App() {
     showToast('Document sauvegardé');
   };
 
+  const handleDelete = async () => {
+    await deleteDocument();
+    showToast('Document supprimé');
+    setCurrentView('documents');
+  };
+
   // Show toast for auto-save
   React.useEffect(() => {
     const interval = setInterval(() => {
@@ -106,7 +112,7 @@ function App() {
           hasUnsavedChanges={hasUnsavedChanges}
           onSave={handleSave}
           onUpdate={updateDocument}
-          onDelete={deleteDocument}
+          onDelete={handleDelete}
           onViewDocuments={() => setCurrentView('documents')}
           onOpenSettings={() => setShowSettings(true)}
         />
