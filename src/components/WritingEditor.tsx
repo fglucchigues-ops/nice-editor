@@ -414,6 +414,14 @@ export function WritingEditor({
     }
   }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave, handleUndo, handleRedo, formatAsHeading]);
 
+  const handleViewDocuments = useCallback(() => {
+    if (hasUnsavedChanges) {
+      if (confirm('Vous avez des modifications non sauvegardées. Voulez-vous sauvegarder avant de continuer ?')) {
+        onSave();
+      }
+    }
+    onViewDocuments();
+  }, [hasUnsavedChanges, onSave, onViewDocuments]);
   return (
     <div className="flex flex-col min-h-screen">
       {/* Title Section */}
@@ -476,7 +484,7 @@ export function WritingEditor({
         hasDocument={!!document?.id}
         onSave={onSave}
         onDelete={onDelete}
-        onViewDocuments={onViewDocuments}
+        onViewDocuments={handleViewDocuments}
         onOpenSettings={onOpenSettings}
         settings={settings}
       />

@@ -118,7 +118,7 @@ export function SettingsModal({ settings, onUpdateSetting, onClose, onSave }: Pr
             </label>
             <div className="flex items-center gap-4">
               <button
-                onClick={() => onUpdateSetting('lineHeight', Math.max(1.2, Number((settings.lineHeight - 0.1).toFixed(1))))}
+                onClick={() => onUpdateSetting('lineHeight', Math.max(1.2, parseFloat((settings.lineHeight - 0.1).toFixed(1))))}
                 className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <Minus className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -127,7 +127,7 @@ export function SettingsModal({ settings, onUpdateSetting, onClose, onSave }: Pr
                 {settings.lineHeight.toFixed(1)}
               </span>
               <button
-                onClick={() => onUpdateSetting('lineHeight', Math.min(2.5, Number((settings.lineHeight + 0.1).toFixed(1))))}
+                onClick={() => onUpdateSetting('lineHeight', Math.min(2.5, parseFloat((settings.lineHeight + 0.1).toFixed(1))))}
                 className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <Plus className="w-4 h-4 text-gray-600 dark:text-gray-300" />
