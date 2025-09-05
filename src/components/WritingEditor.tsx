@@ -248,11 +248,18 @@ export function WritingEditor({
 
   const handleViewDocuments = useCallback(() => {
     if (hasUnsavedChanges) {
-      if (confirm('Vous avez des modifications non sauvegardées. Voulez-vous sauvegarder avant de continuer ?')) {
+      const shouldSave = confirm('Vous avez des modifications non sauvegardées. Voulez-vous sauvegarder avant de continuer ?');
+      if (shouldSave) {
         onSave();
+        onViewDocuments();
+      } else {
+        // Si l'utilisateur clique sur "Annuler", on ne fait rien (on reste sur la page)
+        return;
       }
+    } else {
+      // Pas de modifications non sauvegardées, on peut naviguer
+      onViewDocuments();
     }
-    onViewDocuments();
   }, [hasUnsavedChanges, onSave, onViewDocuments]);
   return (
     <div className="flex flex-col min-h-screen">
