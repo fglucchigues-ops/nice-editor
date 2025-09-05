@@ -33,8 +33,7 @@ export function WritingEditor({
   const [charCount, setCharCount] = useState(0);
   const [isInternalUpdate, setIsInternalUpdate] = useState(false);
   const lastContentRef = useRef<string>('');
-  
-  const { formatText, highlightText, clearFormatting, isFormatActive, formatAsHeading } = useTextFormatting(editorRef);
+
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
   const { selection, showToolbar, toolbarPosition } = useTextSelection(editorRef);
 
