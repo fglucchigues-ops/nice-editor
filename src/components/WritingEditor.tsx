@@ -161,7 +161,7 @@ export function WritingEditor({
 
   // Focus sur le titre lors du chargement d'un document
   useEffect(() => {
-    if (titleRef.current && document) {
+    if (titleRef.current && document && !document.content) {
       const timer = setTimeout(() => {
         if (titleRef.current) {
           titleRef.current.focus();
@@ -172,7 +172,7 @@ export function WritingEditor({
       
       return () => clearTimeout(timer);
     }
-  }, [document]);
+  }, [document?.id]); // Seulement quand l'ID du document change
 
   // Mise à jour du contenu quand le document change
   useEffect(() => {
