@@ -46,7 +46,21 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       orange: '#fed7aa'
     };
     
-    document.execCommand('hiliteColor', false, colors[color]);
+    // Couleurs pour le mode sombre avec meilleur contraste
+    const darkColors: Record<string, string> = {
+      yellow: '#92400e', // Brun foncé pour le jaune
+      blue: '#1e40af',   // Bleu foncé
+      green: '#065f46',  // Vert foncé
+      pink: '#be185d',   // Rose foncé
+      purple: '#6b21a8', // Violet foncé
+      orange: '#c2410c'  // Orange foncé
+    };
+    
+    // Détecter le mode sombre
+    const isDarkMode = document.body.classList.contains('dark');
+    const colorToUse = isDarkMode ? darkColors[color] : colors[color];
+    
+    document.execCommand('hiliteColor', false, colorToUse);
   }, []);
 
   const clearFormatting = useCallback(() => {
@@ -160,30 +174,57 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       if (!selection || selection.rangeCount === 0) return null;
       
       const range = selection.getRangeAt(0);
-      let element = range.commonAncestorContainer;
+      
+      // Pour les sélections multi-lignes, vérifier tous les éléments dans la sélection
+      const walker = document.createTreeWalker(
+        range.commonAncestorContainer,
+        NodeFilter.SHOW_ELEMENT,
+        {
+          acceptNode: (node) => {
+            return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+          }
+        }
+      );
+      
+      const colorMap = {
+        'rgb(254, 243, 199)': 'yellow',
+        'rgba(254, 243, 199, 1)': 'yellow',
+        'rgb(219, 234, 254)': 'blue',
+        'rgba(219, 234, 254, 1)': 'blue',
+        'rgb(209, 250, 229)': 'green',
+        'rgba(209, 250, 229, 1)': 'green',
+        'rgb(252, 231, 243)': 'pink',
+        'rgba(252, 231, 243, 1)': 'pink',
+        'rgb(237, 233, 254)': 'purple',
+        'rgba(237, 233, 254, 1)': 'purple',
+        'rgb(254, 215, 170)': 'orange',
+        'rgba(254, 215, 170, 1)': 'orange'
+      };
+      
+      // Vérifier l'élément de départ
+      let element = range.startContainer;
       
       if (element.nodeType === Node.TEXT_NODE) {
         element = element.parentElement;
       }
       
+      // Vérifier l'élément courant et ses parents
       while (element && element !== editorRef.current) {
         const bgColor = window.getComputedStyle(element).backgroundColor;
-        
-        // Mapper les couleurs RGB vers les noms
-        const colorMap = {
-          'rgb(254, 243, 199)': 'yellow',
-          'rgb(219, 234, 254)': 'blue', 
-          'rgb(209, 250, 229)': 'green',
-          'rgb(252, 231, 243)': 'pink',
-          'rgb(237, 233, 254)': 'purple',
-          'rgb(254, 215, 170)': 'orange'
-        };
-        
         if (colorMap[bgColor]) {
           return colorMap[bgColor];
         }
-        
         element = element.parentElement;
+      }
+      
+      // Vérifier les éléments dans la sélection
+      let node = walker.nextNode();
+      while (node) {
+        const bgColor = window.getComputedStyle(node).backgroundColor;
+        if (colorMap[bgColor]) {
+          return colorMap[bgColor];
+        }
+        node = walker.nextNode();
       }
       
       return null;

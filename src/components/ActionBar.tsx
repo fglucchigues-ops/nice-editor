@@ -33,7 +33,6 @@ export function ActionBar({
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Track window width changes
   useEffect(() => {
@@ -50,6 +49,8 @@ export function ActionBar({
   const handleDelete = () => {
     if (hasDocument && confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
       onDelete();
+      // Rediriger vers la liste des documents après suppression
+      onViewDocuments();
     }
   };
 
@@ -278,21 +279,15 @@ export function ActionBar({
     actions[0], // Save
     actions[1], // Documents
     actions[2], // Settings
-    {
-      icon: Download,
-      onClick: () => setShowExportMenu(!showExportMenu),
-      title: 'Exporter',
-      hasMenu: true
-    },
     ...(hasDocument ? [actions[actions.length - 1]] : []) // Delete si présent
   ];
 
   return (
-    <div ref={containerRef} className="fixed bottom-6 right-6 z-40">
+    <div className="fixed bottom-6 right-6 z-40">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2">
         <div className="flex items-center gap-1">
           {mainActions.map((action, index) => (
-            <div key={index} className="relative">
+            <React.Fragment key={index}>
               <button
                 onClick={action.onClick}
                 disabled={action.disabled}
@@ -301,24 +296,36 @@ export function ActionBar({
               >
                 <action.icon className="w-5 h-5" />
               </button>
-              
-              {action.hasMenu && showExportMenu && (
-                <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 z-10">
-                  <button
-                    onClick={handleExportPDF}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                  >
-                    PDF
-                  </button>
-                  <button
-                    onClick={handleExportWord}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                  >
-                    Word
-                  </button>
-                </div>
-              )}
-            </div>
+            </React.Fragment>
+          ))}
+          
+          {/* Export Button with Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="p-3 rounded-xl transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 text-gray-600 dark:text-gray-300"
+              title="Exporter"
+            >
+              <Download className="w-5 h-5" />
+            </button>
+            
+            {showExportMenu && (
+              <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 z-10">
+                <button
+                  onClick={handleExportPDF}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                >
+                  PDF
+                </button>
+                <button
+                  onClick={handleExportWord}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                >
+                  Word
+                </button>
+              </div>
+            )}
+          </div>
           ))}
         </div>
       </div>
@@ -328,15 +335,6 @@ export function ActionBar({
         <div
           className="fixed inset-0 z-30"
           onClick={() => setShowExportMenu(false)}
-        />
-      )}
-      
-      {showExportMenu && (
-        <ExportMenu
-          onExportPDF={handleExportPDF}
-          onExportWord={handleExportWord}
-          onClose={() => setShowExportMenu(false)}
-          settings={settings}
         />
       )}
     </div>
