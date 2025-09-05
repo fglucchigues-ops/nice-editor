@@ -454,7 +454,7 @@ export function WritingEditor({
           style={{
             fontSize: `${settings.fontSize}px`,
             fontFamily: settings.fontFamily,
-            lineHeight: settings.lineHeight,
+            lineHeight: `${settings.lineHeight}`,
             direction: 'ltr',
             unicodeBidi: 'normal',
             writingMode: 'horizontal-tb'
