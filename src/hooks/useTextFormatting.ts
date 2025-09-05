@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, RefObject } from 'react';
 
-export function useTextFormatting() {
+export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
   const formatText = useCallback((format: string) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
