@@ -79,11 +79,6 @@ export function WritingEditor({
       neutralSpan.style.cssText = 'font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important;';
       neutralSpan.setAttribute('data-neutral-format', 'true');
       
-      // Créer l'indicateur visuel clignotant
-      const blinkIndicator = window.document.createElement('span');
-      blinkIndicator.style.cssText = 'animation: blink 1s ease-in-out 3; color: #3b82f6; font-weight: bold;';
-      blinkIndicator.textContent = '|';
-      
       // Ajouter l'indicateur et un espace invisible
       neutralSpan.appendChild(blinkIndicator);
       const anchor = window.document.createTextNode('\u200B'); // Zero-width space
