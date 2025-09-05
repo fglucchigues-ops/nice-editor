@@ -6,7 +6,6 @@ interface Props {
   settings: Settings;
   onUpdateSetting: (key: keyof Settings, value: any) => void;
   onClose: () => void;
-  onSave?: () => void;
 }
 
 export function SettingsModal({ settings, onUpdateSetting, onClose, onSave }: Props) {
