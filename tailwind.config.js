@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: 'red',
-        'dark-paper': '#1a1a1a',
+        paper: '#fefdfb',
+        'dark-paper': 'red',
       },
       screens: {
         'xs': '475px',
