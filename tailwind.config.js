@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: '#fefdfb',
+        paper: 'red',
         'dark-paper': '#1a1a1a',
       },
       screens: {
