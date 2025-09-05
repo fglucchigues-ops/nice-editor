@@ -7,7 +7,8 @@ import {
   Settings as SettingsIcon, 
   Download, 
   Trash2,
-  X
+  X,
+  MoreHorizontal
 } from 'lucide-react';
 
 interface Props {
@@ -30,6 +31,7 @@ export function ActionBar({
   settings
 }: Props) {
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +45,8 @@ export function ActionBar({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const isSmallScreen = windowWidth < 768;
+  const isSmallScreen = windowWidth < 640;
+  const isVerySmallScreen = windowWidth < 480;
 
   const handleDelete = () => {
     if (hasDocument && confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
@@ -106,6 +109,7 @@ export function ActionBar({
       pdf.save(`${title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
       
       setShowExportMenu(false);
+      setShowActionMenu(false);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Erreur lors de l\'export PDF');
@@ -154,13 +158,34 @@ export function ActionBar({
       URL.revokeObjectURL(url);
       
       setShowExportMenu(false);
+      setShowActionMenu(false);
     } catch (error) {
       console.error('Error exporting Word:', error);
       alert('Erreur lors de l\'export Word');
     }
   };
 
-  // On small screens, show compact floating action bar
+  // On very small screens, show only settings button
+  if (isVerySmallScreen) {
+    return (
+      <>
+        {/* Settings button in top-right */}
+        <div className="fixed top-4 right-4 z-40">
+          <div className="bg-white dark:bg-gray-800 rounded-full shadow-xl border border-gray-200 dark:border-gray-700 p-2">
+            <button
+              onClick={onOpenSettings}
+              className="p-2 rounded-full transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+              title="Paramètres"
+            >
+              <SettingsIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // On small screens, show collapsible action menu
   if (isSmallScreen) {
     return (
       <>
@@ -177,66 +202,88 @@ export function ActionBar({
           </div>
         </div>
         
-        {/* Compact action bar at bottom */}
+        {/* Collapsible action menu at bottom */}
         <div className="fixed bottom-4 right-4 z-40">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={onSave}
-                disabled={!hasUnsavedChanges}
-                className={`p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed ${hasUnsavedChanges ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}
-                title="Sauvegarder (Ctrl+S)"
-              >
-                <Save className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={onViewDocuments}
-                className="p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                title="Documents"
-              >
-                <FileText className="w-4 h-4" />
-              </button>
-              
-              <div className="relative">
-                <button
-                  onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                  title="Exporter"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-                
-                {showExportMenu && (
-                  <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 z-10">
+          <div className="relative">
+            {/* Action Menu */}
+            {showActionMenu && (
+              <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-2 min-w-48">
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      onSave();
+                      setShowActionMenu(false);
+                    }}
+                    disabled={!hasUnsavedChanges}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-left ${hasUnsavedChanges ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}
+                  >
+                    <Save className="w-4 h-4" />
+                    <span className="text-sm">Sauvegarder</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      onViewDocuments();
+                      setShowActionMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-left"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="text-sm">Documents</span>
+                  </button>
+                  
+                  <button
+                    onClick={handleExportPDF}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-left"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="text-sm">Export PDF</span>
+                  </button>
+                  
+                  <button
+                    onClick={handleExportWord}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-left"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="text-sm">Export Word</span>
+                  </button>
+                  
+                  {hasDocument && (
                     <button
-                      onClick={handleExportPDF}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                      onClick={() => {
+                        handleDelete();
+                        setShowActionMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 dark:text-red-400 text-left"
                     >
-                      PDF
+                      <Trash2 className="w-4 h-4" />
+                      <span className="text-sm">Supprimer</span>
                     </button>
-                    <button
-                      onClick={handleExportWord}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                    >
-                      Word
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-              
-              {hasDocument && (
-                <button
-                  onClick={handleDelete}
-                  className="p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 dark:text-red-400"
-                  title="Supprimer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+            )}
+            
+            {/* Menu Button */}
+            <div className="bg-white dark:bg-gray-800 rounded-full shadow-xl border border-gray-200 dark:border-gray-700 p-2">
+              <button
+                onClick={() => setShowActionMenu(!showActionMenu)}
+                className="p-3 rounded-full transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                title="Actions"
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
+        
+        {/* Click outside to close menu */}
+        {showActionMenu && (
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setShowActionMenu(false)}
+          />
+        )}
       </>
     );
   }

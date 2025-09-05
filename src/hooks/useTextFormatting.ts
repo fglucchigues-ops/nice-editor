@@ -43,42 +43,13 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const range = selection.getRangeAt(0);
     if (range.collapsed) return;
     
-    // Nettoyer d'abord tous les titres existants dans la sélection
-    const fragment = range.cloneContents();
-    const walker = document.createTreeWalker(
-      fragment,
-      NodeFilter.SHOW_ELEMENT,
-      {
-        acceptNode: (node) => {
-          return /^H[1-6]$/i.test(node.nodeName) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
-        }
-      }
-    );
+    // Sauvegarder le texte sélectionné
+    const selectedText = range.toString();
     
-    const headingsToReplace = [];
-    let node;
-    while (node = walker.nextNode()) {
-      headingsToReplace.push(node);
-    }
+    // Supprimer le contenu sélectionné
+    range.deleteContents();
     
-    // Extraire le contenu sélectionné
-    const selectedContent = range.extractContents();
-    
-    // Nettoyer les titres existants dans le contenu extrait
-    const cleanContent = document.createDocumentFragment();
-    const childNodes = Array.from(selectedContent.childNodes);
-    
-    childNodes.forEach(child => {
-      if (child.nodeType === Node.ELEMENT_NODE && /^H[1-6]$/i.test((child as Element).tagName)) {
-        // Remplacer le titre par son contenu textuel
-        const textNode = document.createTextNode(child.textContent || '');
-        cleanContent.appendChild(textNode);
-      } else {
-        cleanContent.appendChild(child);
-      }
-    });
-    
-    // Créer le nouveau titre
+    // Créer le nouveau titre avec le texte
     const headingTag = `h${level}`;
     const heading = document.createElement(headingTag);
     heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
@@ -86,11 +57,9 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     heading.style.lineHeight = '1.2';
     heading.style.margin = '1em 0 0.5em 0';
     heading.style.display = 'block';
+    heading.textContent = selectedText;
     
-    // Ajouter le contenu nettoyé au nouveau titre
-    heading.appendChild(cleanContent);
-    
-    // Insérer le nouveau titre
+    // Insérer le titre
     range.insertNode(heading);
     
     // Positionner le curseur après le titre
@@ -99,6 +68,24 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     newRange.setStartAfter(heading);
     newRange.collapse(true);
     selection.addRange(newRange);
+    
+    // Nettoyer les titres orphelins dans l'éditeur
+    if (editorRef.current) {
+      const allHeadings = editorRef.current.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      allHeadings.forEach(h => {
+        // Si le titre est vide ou contient seulement des espaces
+        if (!h.textContent?.trim()) {
+          h.remove();
+        }
+        // Si le titre est imbriqué dans un autre titre
+        const parentHeading = h.closest('h1, h2, h3, h4, h5, h6');
+        if (parentHeading && parentHeading !== h) {
+          // Extraire le contenu du titre imbriqué
+          const textContent = h.textContent || '';
+          h.replaceWith(document.createTextNode(textContent));
+        }
+      });
+    }
   }, [editorRef]);
 
   const highlightText = useCallback((color: string) => {
@@ -137,7 +124,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     try {
       const range = selection.getRangeAt(0);
       
-      // Créer un span neutre simple (sans blink)
+      // Créer un span neutre invisible
       const neutralSpan = document.createElement('span');
       neutralSpan.style.cssText = 'font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important;';
       neutralSpan.setAttribute('data-neutral-format', 'true');
