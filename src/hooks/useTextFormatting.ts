@@ -53,8 +53,15 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    document.execCommand('removeFormat', false);
-    document.execCommand('unlink', false);
+    // Si pas de sélection, appliquer le formatage de paragraphe
+    if (selection.isCollapsed) {
+      document.execCommand('formatBlock', false, 'p');
+    } else {
+      // Pour une sélection, d'abord convertir en paragraphe puis nettoyer
+      document.execCommand('formatBlock', false, 'p');
+      document.execCommand('removeFormat', false);
+      document.execCommand('unlink', false);
+    }
   }, []);
 
   // Fonction pour gérer le nettoyage du formatage (sans blink)
@@ -64,12 +71,17 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     
     // Si du texte est sélectionné, appliquer le nettoyage standard
     if (!selection.isCollapsed) {
-      clearFormatting();
+      // Convertir en paragraphe puis nettoyer le formatage
+      document.execCommand('formatBlock', false, 'p');
+      document.execCommand('removeFormat', false);
+      document.execCommand('unlink', false);
       return;
     }
     
-    // Pas de sélection, créer un point de rupture simple
+    // Pas de sélection, convertir en paragraphe et créer un point de rupture
     try {
+      document.execCommand('formatBlock', false, 'p');
+      
       const range = selection.getRangeAt(0);
       
       // Créer un span neutre invisible
@@ -103,7 +115,8 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       }
       
     } catch (error) {
-      clearFormatting();
+      document.execCommand('formatBlock', false, 'p');
+      document.execCommand('removeFormat', false);
     }
   }, [clearFormatting, editorRef]);
 
