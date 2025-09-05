@@ -36,8 +36,10 @@ export function WritingEditor({
   const [history, setHistory] = useState<Array<{title: string, content: string}>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const isUndoRedoRef = useRef(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveHistoryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSaveTimeRef = useRef<number>(0);
   const isInitializedRef = useRef(false);
+  const lastInputTypeRef = useRef<string>('');
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
   const { formatAsHeading } = useTextFormatting(editorRef);
@@ -183,8 +185,14 @@ export function WritingEditor({
   }, [clearFormatting]);
 
   // Fonction pour sauvegarder l'état dans l'historique
-  const saveToHistory = useCallback((title: string, content: string) => {
+  const saveToHistory = useCallback((title: string, content: string, force: boolean = false) => {
     if (isUndoRedoRef.current) return; // Ne pas sauvegarder pendant undo/redo
+    
+    const now = Date.now();
+    const timeSinceLastSave = now - lastSaveTimeRef.current;
+    
+    // Sauvegarder immédiatement si forcé ou si plus de 2 secondes depuis la dernière sauvegarde
+    const shouldSaveNow = force || timeSinceLastSave > 2000;
     
     setHistory(prev => {
       // Éviter les doublons
@@ -193,16 +201,21 @@ export function WritingEditor({
         return prev;
       }
       
-      const newHistory = prev.slice(0, historyIndex + 1);
-      newHistory.push({ title, content });
-      // Limiter l'historique à 50 entrées
-      if (newHistory.length > 50) {
-        newHistory.shift();
-        setHistoryIndex(prev => prev); // Garder le même index relatif
-      } else {
-        setHistoryIndex(newHistory.length - 1);
+      if (shouldSaveNow) {
+        const newHistory = prev.slice(0, historyIndex + 1);
+        newHistory.push({ title, content });
+        // Limiter l'historique à 50 entrées
+        if (newHistory.length > 50) {
+          newHistory.shift();
+          setHistoryIndex(prev => prev); // Garder le même index relatif
+        } else {
+          setHistoryIndex(newHistory.length - 1);
+        }
+        lastSaveTimeRef.current = now;
+        return newHistory;
       }
-      return newHistory;
+      
+      return prev;
     });
   }, [historyIndex]);
 
@@ -345,24 +358,57 @@ export function WritingEditor({
     // Mettre à jour la référence pour éviter les boucles
     lastContentRef.current = content;
     
-    // Annuler le timeout précédent
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+    // Détecter le type d'input (ajout/suppression)
+    const currentLength = content.length;
+    const previousContent = history[historyIndex]?.content || '';
+    const previousLength = previousContent.length;
+    
+    let inputType = 'typing';
+    if (currentLength > previousLength) {
+      inputType = 'insert';
+    } else if (currentLength < previousLength) {
+      inputType = 'delete';
     }
     
-    // Sauvegarder dans l'historique avec debounce
-    saveTimeoutRef.current = setTimeout(() => {
+    // Sauvegarder immédiatement si changement de type d'input
+    const shouldSaveImmediately = lastInputTypeRef.current !== inputType && lastInputTypeRef.current !== '';
+    lastInputTypeRef.current = inputType;
+    
+    // Annuler le timeout précédent
+    if (saveHistoryTimeoutRef.current) {
+      clearTimeout(saveHistoryTimeoutRef.current);
+    }
+    
+    if (shouldSaveImmediately) {
+      // Sauvegarder immédiatement lors du changement de type
+      saveToHistory(title, content, true);
+    } else {
+      // Sauvegarder avec délai pour les modifications continues
+      saveHistoryTimeoutRef.current = setTimeout(() => {
+        if (!isUndoRedoRef.current) {
+          saveToHistory(title, content, false);
+        }
+      }, 1000);
+    }
+    
+    // Sauvegarder après une pause dans la frappe
+    const pauseTimeout = setTimeout(() => {
       if (!isUndoRedoRef.current) {
-        saveToHistory(title, content);
+        saveToHistory(title, content, true);
       }
-    }, 500); // Réduit le délai pour une meilleure réactivité
+    }, 2000);
+    
+    // Nettoyer le timeout de pause si une nouvelle input arrive
+    const cleanup = () => clearTimeout(pauseTimeout);
+    const nextInput = setTimeout(cleanup, 100);
     
     // Utiliser setTimeout pour éviter les conflits avec la position du curseur
     setTimeout(() => {
       onUpdate(title, content);
       updateCounters();
+      clearTimeout(nextInput);
     }, 0);
-  }, [onUpdate, updateCounters, isInternalUpdate, saveToHistory]);
+  }, [onUpdate, updateCounters, isInternalUpdate, saveToHistory, history, historyIndex]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     console.log('Key pressed:', event.key, 'Ctrl:', event.ctrlKey, 'Meta:', event.metaKey, 'Shift:', event.shiftKey);
@@ -453,8 +499,8 @@ export function WritingEditor({
   // Nettoyage du timeout au démontage
   useEffect(() => {
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+      if (saveHistoryTimeoutRef.current) {
+        clearTimeout(saveHistoryTimeoutRef.current);
       }
     };
   }, []);
