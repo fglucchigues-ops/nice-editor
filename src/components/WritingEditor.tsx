@@ -199,9 +199,15 @@ export function WritingEditor({
 
   // Fonction undo
   const handleUndo = useCallback(() => {
-    if (historyIndex > 0) {
+    if (historyIndex > 0 && history.length > 0) {
       isUndoRedoRef.current = true;
       const prevState = history[historyIndex - 1];
+      
+      if (!prevState) {
+        isUndoRedoRef.current = false;
+        return;
+      }
+      
       setHistoryIndex(prev => prev - 1);
       
       // Mettre à jour le titre
@@ -228,9 +234,15 @@ export function WritingEditor({
 
   // Fonction redo
   const handleRedo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
+    if (historyIndex < history.length - 1 && history.length > 0) {
       isUndoRedoRef.current = true;
       const nextState = history[historyIndex + 1];
+      
+      if (!nextState) {
+        isUndoRedoRef.current = false;
+        return;
+      }
+      
       setHistoryIndex(prev => prev + 1);
       
       // Mettre à jour le titre
