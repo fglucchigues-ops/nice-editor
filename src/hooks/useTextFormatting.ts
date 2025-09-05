@@ -7,10 +7,10 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       colors: {
         yellow: '#fef3c7',
         blue: '#2563eb',
-        green: '#d1fae5',
-        pink: '#fce7f3',
-        purple: '#ede9fe',
-        orange: '#fed7aa'
+        green: '#16a34a',
+        pink: '#db2777',
+        purple: '#9333ea',
+        orange: '#f97316'
       },
       textColor: null // Pas de couleur de texte forcée en mode clair
     };
