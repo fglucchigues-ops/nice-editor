@@ -25,7 +25,7 @@ export function FormatToolbar({
   const highlightColors = [
     { 
       name: 'yellow', 
-      color: 'bg-orange-600', 
+      color: 'bg-yellow-600', 
       title: 'Jaune (Ctrl+1)' 
     },
     { 
