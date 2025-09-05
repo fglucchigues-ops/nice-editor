@@ -45,6 +45,121 @@ export function ActionBar({
 
   const isSmallScreen = windowWidth < 768;
 
+  const handleDelete = () => {
+    if (hasDocument && confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
+      onDelete();
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      // Get current document content
+      const titleElement = document.querySelector('input[type="text"]') as HTMLInputElement;
+      const editorElement = document.querySelector('[contenteditable="true"]') as HTMLElement;
+      
+      if (!titleElement || !editorElement) return;
+      
+      const title = titleElement.value || 'Document';
+      const content = editorElement.innerHTML;
+      
+      // Dynamically import jsPDF
+      const { jsPDF } = await import('jspdf');
+      const html2canvas = (await import('html2canvas')).default;
+      
+      // Create a temporary container for export
+      const exportContainer = window.document.createElement('div');
+      exportContainer.style.cssText = `
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        width: 210mm;
+        padding: 10mm;
+        background: white;
+        color: black;
+        font-family: ${settings.fontFamily};
+        font-size: ${settings.fontSize}px;
+        line-height: ${settings.lineHeight};
+      `;
+      
+      exportContainer.innerHTML = `
+        <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px;">${title}</h1>
+        ${content}
+      `;
+      
+      window.document.body.appendChild(exportContainer);
+      
+      const canvas = await html2canvas(exportContainer, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true
+      });
+      
+      window.document.body.removeChild(exportContainer);
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth() - 20;
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth, pdfHeight);
+      pdf.save(`${title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+      
+      setShowExportMenu(false);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      alert('Erreur lors de l\'export PDF');
+    }
+  };
+
+  const handleExportWord = () => {
+    try {
+      // Get current document content
+      const titleElement = document.querySelector('input[type="text"]') as HTMLInputElement;
+      const editorElement = document.querySelector('[contenteditable="true"]') as HTMLElement;
+      
+      if (!titleElement || !editorElement) return;
+      
+      const title = titleElement.value || 'Document';
+      const content = editorElement.innerHTML;
+      
+      const htmlContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>${title}</title>
+          <style>
+            body { font-family: ${settings.fontFamily}; font-size: ${settings.fontSize}px; line-height: ${settings.lineHeight}; margin: 0.5in; }
+            h1, h2, h3, h4, h5, h6 { margin: 1.5em 0 0.5em 0; line-height: 1.3; }
+            .title { font-size: 24pt; font-weight: bold; text-align: center; margin-bottom: 2em; border-bottom: 2pt solid black; padding-bottom: 12pt; }
+          </style>
+        </head>
+        <body>
+          <div class="title">${title}</div>
+          ${content}
+        </body>
+        </html>
+      `;
+      
+      const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/[^a-z0-9]/gi, '_')}.doc`;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setShowExportMenu(false);
+    } catch (error) {
+      console.error('Error exporting Word:', error);
+      alert('Erreur lors de l\'export Word');
+    }
+  };
+
   // On small screens, show compact floating action bar
   if (isSmallScreen) {
     return (
@@ -93,16 +208,26 @@ export function ActionBar({
                 </button>
                 
                 {showExportMenu && (
-                  <ExportMenu
-                    onClose={() => setShowExportMenu(false)}
-                    settings={settings}
-                  />
+                  <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 z-10">
+                    <button
+                      onClick={handleExportPDF}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                    >
+                      PDF
+                    </button>
+                    <button
+                      onClick={handleExportWord}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                    >
+                      Word
+                    </button>
+                  </div>
                 )}
               </div>
               
               {hasDocument && (
                 <button
-                  onClick={onDelete}
+                  onClick={handleDelete}
                   className="p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 dark:text-red-400"
                   title="Supprimer"
                 >
@@ -143,7 +268,7 @@ export function ActionBar({
     },
     ...(hasDocument ? [{
       icon: Trash2,
-      onClick: onDelete,
+      onClick: handleDelete,
       className: 'text-red-500 dark:text-red-400',
       title: 'Supprimer'
     }] : [])

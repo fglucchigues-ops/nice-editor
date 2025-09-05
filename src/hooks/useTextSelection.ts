@@ -38,14 +38,14 @@ export function useTextSelection(editorRef: RefObject<HTMLElement>) {
         // Calculate toolbar position
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const toolbarWidth = 350; // Approximate width for single line
+        const toolbarWidth = 400; // Approximate width for single line
         const toolbarHeight = 50; // Approximate height
         
         let top = rect.top - toolbarHeight - 10;
         let left = rect.left + (rect.width / 2) - (toolbarWidth / 2);
         
         // Adjust for viewport boundaries
-        if (top < 10) {
+        if (top < 10 || rect.top < toolbarHeight + 20) {
           top = rect.bottom + 10;
         }
         if (left < 10) {
@@ -53,6 +53,11 @@ export function useTextSelection(editorRef: RefObject<HTMLElement>) {
         }
         if (left + toolbarWidth > viewportWidth - 10) {
           left = viewportWidth - toolbarWidth - 10;
+        }
+        
+        // Ensure toolbar stays within viewport vertically
+        if (top + toolbarHeight > viewportHeight - 10) {
+          top = viewportHeight - toolbarHeight - 10;
         }
         
         setToolbarPosition({ top, left });
