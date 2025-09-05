@@ -166,27 +166,6 @@ export function SettingsModal({ settings, onUpdateSetting, onClose, onSave }: Pr
             </div>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-          >
-            Annuler
-          </button>
-          {onSave && (
-            <button
-              onClick={() => {
-                onSave();
-                onClose();
-              }}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              Sauvegarder
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
