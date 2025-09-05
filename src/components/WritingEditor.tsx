@@ -80,7 +80,6 @@ export function WritingEditor({
       neutralSpan.setAttribute('data-neutral-format', 'true');
       
       // Ajouter l'indicateur et un espace invisible
-      neutralSpan.appendChild(blinkIndicator);
       const anchor = window.document.createTextNode('\u200B'); // Zero-width space
       neutralSpan.appendChild(anchor);
       
