@@ -336,17 +336,15 @@ export function ActionBar({
           onClick={() => setShowExportMenu(false)}
         />
       )}
-    </div>
-  );
-}
-                  onClose={() => setShowExportMenu(false)}
-                  settings={settings}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      
+      {showExportMenu && (
+        <ExportMenu
+          onExportPDF={handleExportPDF}
+          onExportWord={handleExportWord}
+          onClose={() => setShowExportMenu(false)}
+          settings={settings}
+        />
+      )}
     </div>
   );
 }
