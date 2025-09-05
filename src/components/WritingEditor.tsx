@@ -38,6 +38,7 @@ export function WritingEditor({
   const isUndoRedoRef = useRef(false);
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
+  const { formatAsHeading } = useTextFormatting(editorRef);
   const { selection, showToolbar, toolbarPosition } = useTextSelection(editorRef);
 
   // Fonction pour mettre à jour les compteurs (définie en premier)
