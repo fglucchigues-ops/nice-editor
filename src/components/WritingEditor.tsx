@@ -37,6 +37,7 @@ export function WritingEditor({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const isUndoRedoRef = useRef(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitializedRef = useRef(false);
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
   const { formatAsHeading } = useTextFormatting(editorRef);
@@ -185,23 +186,24 @@ export function WritingEditor({
   const saveToHistory = useCallback((title: string, content: string) => {
     if (isUndoRedoRef.current) return; // Ne pas sauvegarder pendant undo/redo
     
-    // Éviter les doublons
-    const currentState = history[historyIndex];
-    if (currentState && currentState.title === title && currentState.content === content) {
-      return;
-    }
-    
     setHistory(prev => {
+      // Éviter les doublons
+      const currentState = prev[prev.length - 1];
+      if (currentState && currentState.title === title && currentState.content === content) {
+        return prev;
+      }
+      
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push({ title, content });
       // Limiter l'historique à 50 entrées
       if (newHistory.length > 50) {
         newHistory.shift();
-        return newHistory;
+        setHistoryIndex(prev => prev); // Garder le même index relatif
+      } else {
+        setHistoryIndex(newHistory.length - 1);
       }
       return newHistory;
     });
-    setHistoryIndex(prev => Math.min(prev + 1, 49));
   }, [historyIndex]);
 
   // Fonction undo
@@ -217,7 +219,8 @@ export function WritingEditor({
         return;
       }
       
-      setHistoryIndex(prev => prev - 1);
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
       
       // Mettre à jour le titre
       if (titleRef.current) {
@@ -226,9 +229,7 @@ export function WritingEditor({
       
       // Mettre à jour le contenu
       if (editorRef.current) {
-        const caretPos = saveCaretPosition();
         editorRef.current.innerHTML = prevState.content;
-        restoreCaretPosition(caretPos);
       }
       
       // Mettre à jour le document
@@ -239,7 +240,7 @@ export function WritingEditor({
         isUndoRedoRef.current = false;
       }, 100);
     }
-  }, [historyIndex, history, saveCaretPosition, restoreCaretPosition, onUpdate, updateCounters]);
+  }, [historyIndex, history, onUpdate, updateCounters]);
 
   // Fonction redo
   const handleRedo = useCallback(() => {
@@ -247,14 +248,15 @@ export function WritingEditor({
     
     if (historyIndex < history.length - 1 && history.length > 0) {
       isUndoRedoRef.current = true;
-      const nextState = history[historyIndex + 1];
+      const newIndex = historyIndex + 1;
+      const nextState = history[newIndex];
       
       if (!nextState) {
         isUndoRedoRef.current = false;
         return;
       }
       
-      setHistoryIndex(prev => prev + 1);
+      setHistoryIndex(newIndex);
       
       // Mettre à jour le titre
       if (titleRef.current) {
@@ -263,9 +265,7 @@ export function WritingEditor({
       
       // Mettre à jour le contenu
       if (editorRef.current) {
-        const caretPos = saveCaretPosition();
         editorRef.current.innerHTML = nextState.content;
-        restoreCaretPosition(caretPos);
       }
       
       // Mettre à jour le document
@@ -276,7 +276,7 @@ export function WritingEditor({
         isUndoRedoRef.current = false;
       }, 100);
     }
-  }, [historyIndex, history, saveCaretPosition, restoreCaretPosition, onUpdate, updateCounters]);
+  }, [historyIndex, history, onUpdate, updateCounters]);
 
   // Focus sur le titre lors du chargement d'un document
   useEffect(() => {
@@ -307,10 +307,11 @@ export function WritingEditor({
         editorRef.current.innerHTML = newContent;
         lastContentRef.current = newContent;
         
-        // Initialiser l'historique avec le document actuel
-        if (document.title || document.content) {
+        // Initialiser l'historique avec le document actuel (une seule fois)
+        if (!isInitializedRef.current && (document.title || document.content)) {
           setHistory([{ title: document.title, content: document.content }]);
           setHistoryIndex(0);
+          isInitializedRef.current = true;
         }
         
         // Restaurer la position du curseur après un court délai
@@ -354,7 +355,7 @@ export function WritingEditor({
       if (!isUndoRedoRef.current) {
         saveToHistory(title, content);
       }
-    }, 1000);
+    }, 500); // Réduit le délai pour une meilleure réactivité
     
     // Utiliser setTimeout pour éviter les conflits avec la position du curseur
     setTimeout(() => {
