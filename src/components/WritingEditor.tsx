@@ -36,6 +36,7 @@ export function WritingEditor({
   const [history, setHistory] = useState<Array<{title: string, content: string}>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const isUndoRedoRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
   const { formatAsHeading } = useTextFormatting(editorRef);
@@ -184,6 +185,12 @@ export function WritingEditor({
   const saveToHistory = useCallback((title: string, content: string) => {
     if (isUndoRedoRef.current) return; // Ne pas sauvegarder pendant undo/redo
     
+    // Éviter les doublons
+    const currentState = history[historyIndex];
+    if (currentState && currentState.title === title && currentState.content === content) {
+      return;
+    }
+    
     setHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push({ title, content });
@@ -199,7 +206,9 @@ export function WritingEditor({
 
   // Fonction undo
   const handleUndo = useCallback(() => {
-    if (historyIndex > 0 && history.length > 0) {
+    console.log('Undo called, historyIndex:', historyIndex, 'history length:', history.length);
+    
+    if (historyIndex > 0 && history.length > 1) {
       isUndoRedoRef.current = true;
       const prevState = history[historyIndex - 1];
       
@@ -234,6 +243,8 @@ export function WritingEditor({
 
   // Fonction redo
   const handleRedo = useCallback(() => {
+    console.log('Redo called, historyIndex:', historyIndex, 'history length:', history.length);
+    
     if (historyIndex < history.length - 1 && history.length > 0) {
       isUndoRedoRef.current = true;
       const nextState = history[historyIndex + 1];
@@ -333,21 +344,28 @@ export function WritingEditor({
     // Mettre à jour la référence pour éviter les boucles
     lastContentRef.current = content;
     
-    // Sauvegarder dans l'historique (avec debounce)
-    const timeoutId = setTimeout(() => {
-      saveToHistory(title, content);
-    }, 500);
+    // Annuler le timeout précédent
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Sauvegarder dans l'historique avec debounce
+    saveTimeoutRef.current = setTimeout(() => {
+      if (!isUndoRedoRef.current) {
+        saveToHistory(title, content);
+      }
+    }, 1000);
     
     // Utiliser setTimeout pour éviter les conflits avec la position du curseur
     setTimeout(() => {
       onUpdate(title, content);
       updateCounters();
     }, 0);
-    
-    return () => clearTimeout(timeoutId);
   }, [onUpdate, updateCounters, isInternalUpdate, saveToHistory]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    console.log('Key pressed:', event.key, 'Ctrl:', event.ctrlKey, 'Meta:', event.metaKey, 'Shift:', event.shiftKey);
+    
     const { ctrlKey, metaKey, altKey, key } = event;
     const isCmd = ctrlKey || metaKey;
     
@@ -375,14 +393,19 @@ export function WritingEditor({
           break;
         case 'z':
           event.preventDefault();
+          event.stopPropagation();
           if (event.shiftKey) {
+            console.log('Redo triggered');
             handleRedo();
           } else {
+            console.log('Undo triggered');
             handleUndo();
           }
           break;
         case 'y':
           event.preventDefault();
+          event.stopPropagation();
+          console.log('Redo (Ctrl+Y) triggered');
           handleRedo();
           break;
         
@@ -425,6 +448,15 @@ export function WritingEditor({
       }
     }
   }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave, handleUndo, handleRedo, formatAsHeading]);
+
+  // Nettoyage du timeout au démontage
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleViewDocuments = useCallback(() => {
     if (hasUnsavedChanges) {
@@ -473,6 +505,7 @@ export function WritingEditor({
           }}
           onInput={handleContentInput}
           onKeyDown={handleKeyDown}
+          tabIndex={0}
           data-placeholder="Commencez à écrire..."
           suppressContentEditableWarning={true}
         />
