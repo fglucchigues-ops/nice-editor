@@ -6,7 +6,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     return {
       colors: {
         yellow: '#fef3c7',
-        blue: '#dbeafe',
+        blue: '#2563eb',
         green: '#d1fae5',
         pink: '#fce7f3',
         purple: '#ede9fe',
