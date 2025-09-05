@@ -28,32 +28,32 @@ export function FormatToolbar({
   const highlightColors = [
     { 
       name: 'yellow', 
-      color: isDarkMode ? 'bg-orange-600' : 'bg-yellow-200', 
+      color: 'bg-orange-600', 
       title: 'Jaune (Ctrl+1)' 
     },
     { 
       name: 'blue', 
-      color: isDarkMode ? 'bg-blue-600' : 'bg-blue-200', 
+      color: isDarkMode ? 'bg-blue-600', 
       title: 'Bleu (Ctrl+2)' 
     },
     { 
       name: 'green', 
-      color: isDarkMode ? 'bg-green-600' : 'bg-green-200', 
+      color: 'bg-green-600', 
       title: 'Vert (Ctrl+3)' 
     },
     { 
       name: 'pink', 
-      color: isDarkMode ? 'bg-pink-600' : 'bg-pink-200', 
+      color: 'bg-pink-600', 
       title: 'Rose (Ctrl+4)' 
     },
     { 
       name: 'purple', 
-      color: isDarkMode ? 'bg-purple-600' : 'bg-purple-200', 
+      color: 'bg-purple-600', 
       title: 'Violet (Ctrl+5)' 
     },
     { 
       name: 'orange', 
-      color: isDarkMode ? 'bg-orange-500' : 'bg-orange-200', 
+      color: 'bg-orange-500', 
       title: 'Orange (Ctrl+6)' 
     }
   ];
