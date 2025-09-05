@@ -33,6 +33,9 @@ export function WritingEditor({
   const [charCount, setCharCount] = useState(0);
   const [isInternalUpdate, setIsInternalUpdate] = useState(false);
   const lastContentRef = useRef<string>('');
+  const [history, setHistory] = useState<Array<{title: string, content: string}>>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const isUndoRedoRef = useRef(false);
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
   const { formatAsHeading } = useTextFormatting(editorRef);
@@ -160,6 +163,81 @@ export function WritingEditor({
     }
   }, [clearFormatting]);
 
+  // Fonction pour sauvegarder l'état dans l'historique
+  const saveToHistory = useCallback((title: string, content: string) => {
+    if (isUndoRedoRef.current) return; // Ne pas sauvegarder pendant undo/redo
+    
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push({ title, content });
+      // Limiter l'historique à 50 entrées
+      if (newHistory.length > 50) {
+        newHistory.shift();
+        return newHistory;
+      }
+      return newHistory;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  }, [historyIndex]);
+
+  // Fonction undo
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      isUndoRedoRef.current = true;
+      const prevState = history[historyIndex - 1];
+      setHistoryIndex(prev => prev - 1);
+      
+      // Mettre à jour le titre
+      if (titleRef.current) {
+        titleRef.current.value = prevState.title;
+      }
+      
+      // Mettre à jour le contenu
+      if (editorRef.current) {
+        const caretPos = saveCaretPosition();
+        editorRef.current.innerHTML = prevState.content;
+        restoreCaretPosition(caretPos);
+      }
+      
+      // Mettre à jour le document
+      onUpdate(prevState.title, prevState.content);
+      updateCounters();
+      
+      setTimeout(() => {
+        isUndoRedoRef.current = false;
+      }, 100);
+    }
+  }, [historyIndex, history, saveCaretPosition, restoreCaretPosition, onUpdate, updateCounters]);
+
+  // Fonction redo
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      isUndoRedoRef.current = true;
+      const nextState = history[historyIndex + 1];
+      setHistoryIndex(prev => prev + 1);
+      
+      // Mettre à jour le titre
+      if (titleRef.current) {
+        titleRef.current.value = nextState.title;
+      }
+      
+      // Mettre à jour le contenu
+      if (editorRef.current) {
+        const caretPos = saveCaretPosition();
+        editorRef.current.innerHTML = nextState.content;
+        restoreCaretPosition(caretPos);
+      }
+      
+      // Mettre à jour le document
+      onUpdate(nextState.title, nextState.content);
+      updateCounters();
+      
+      setTimeout(() => {
+        isUndoRedoRef.current = false;
+      }, 100);
+    }
+  }, [historyIndex, history, saveCaretPosition, restoreCaretPosition, onUpdate, updateCounters]);
+
   // Focus sur le titre lors du chargement d'un document
   useEffect(() => {
     if (titleRef.current && document && !document.content) {
@@ -188,6 +266,12 @@ export function WritingEditor({
         setIsInternalUpdate(true);
         editorRef.current.innerHTML = newContent;
         lastContentRef.current = newContent;
+        
+        // Initialiser l'historique avec le document actuel
+        if (document.title || document.content) {
+          setHistory([{ title: document.title, content: document.content }]);
+          setHistoryIndex(0);
+        }
         
         // Restaurer la position du curseur après un court délai
         requestAnimationFrame(() => {
@@ -220,8 +304,12 @@ export function WritingEditor({
     
     const title = e.target.value;
     const content = editorRef.current?.innerHTML || '';
+    
+    // Sauvegarder dans l'historique
+    saveToHistory(title, content);
+    
     onUpdate(title, content);
-  }, [onUpdate, isInternalUpdate]);
+  }, [onUpdate, isInternalUpdate, saveToHistory]);
 
   const handleContentInput = useCallback(() => {
     if (isInternalUpdate || !editorRef.current) return;
@@ -232,12 +320,19 @@ export function WritingEditor({
     // Mettre à jour la référence pour éviter les boucles
     lastContentRef.current = content;
     
+    // Sauvegarder dans l'historique (avec debounce)
+    const timeoutId = setTimeout(() => {
+      saveToHistory(title, content);
+    }, 500);
+    
     // Utiliser setTimeout pour éviter les conflits avec la position du curseur
     setTimeout(() => {
       onUpdate(title, content);
       updateCounters();
     }, 0);
-  }, [onUpdate, updateCounters, isInternalUpdate]);
+    
+    return () => clearTimeout(timeoutId);
+  }, [onUpdate, updateCounters, isInternalUpdate, saveToHistory]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     const { ctrlKey, metaKey, altKey, key } = event;
@@ -268,17 +363,14 @@ export function WritingEditor({
         case 'z':
           event.preventDefault();
           if (event.shiftKey) {
-            // Ctrl+Shift+Z = Redo
-            document.execCommand('redo', false);
+            handleRedo();
           } else {
-            // Ctrl+Z = Undo
-            document.execCommand('undo', false);
+            handleUndo();
           }
           break;
         case 'y':
-          // Ctrl+Y = Redo (alternative)
           event.preventDefault();
-          document.execCommand('redo', false);
+          handleRedo();
           break;
         
       case '1':
@@ -319,7 +411,7 @@ export function WritingEditor({
           break;
       }
     }
-  }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave]);
+  }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave, handleUndo, handleRedo]);
 
   return (
     <div className="flex flex-col min-h-screen">

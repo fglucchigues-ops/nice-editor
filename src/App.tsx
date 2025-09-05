@@ -76,18 +76,19 @@ function App() {
     setCurrentView('documents');
   };
 
-  // Show toast for auto-save
+  // Confirmation avant fermeture si changements non sauvegardés
   React.useEffect(() => {
-    const interval = setInterval(() => {
-      if (hasUnsavedChanges && currentDocument) {
-        saveDocument().then(() => {
-          showToast('Sauvegarde automatique');
-        });
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'Vous avez des modifications non sauvegardées. Voulez-vous vraiment quitter ?';
+        return e.returnValue;
       }
-    }, 10000); // Auto-save every 10 seconds
-    
-    return () => clearInterval(interval);
-  }, [hasUnsavedChanges, currentDocument, saveDocument]);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
