@@ -11,6 +11,7 @@ interface Props {
   onHighlightText: (color: string) => void;
   onClearFormatting: () => void;
   isFormatActive: (format: string) => boolean;
+  getActiveHighlight: () => string | null;
 }
 
 export function FormatToolbar({
@@ -18,7 +19,8 @@ export function FormatToolbar({
   onFormatText,
   onHighlightText,
   onClearFormatting,
-  isFormatActive
+  isFormatActive,
+  getActiveHighlight
 }: Props) {
   const highlightColors = [
     { name: 'yellow', color: 'bg-yellow-200', title: 'Jaune (Ctrl+1)' },
@@ -28,6 +30,8 @@ export function FormatToolbar({
     { name: 'purple', color: 'bg-purple-200', title: 'Violet (Ctrl+5)' },
     { name: 'orange', color: 'bg-orange-200', title: 'Orange (Ctrl+6)' }
   ];
+
+  const activeHighlight = getActiveHighlight();
 
   return (
     <div
@@ -66,7 +70,9 @@ export function FormatToolbar({
           <button
             key={heading}
             onClick={() => onFormatText(heading)}
-            className="px-1.5 md:px-2 py-1 text-xs font-bold rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+            className={`px-1.5 md:px-2 py-1 text-xs font-bold rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              isFormatActive(heading) ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'
+            }`}
             title={`Titre ${heading.charAt(1)} (Ctrl+Alt+${heading.charAt(1)})`}
           >
             {heading.toUpperCase()}
@@ -80,7 +86,9 @@ export function FormatToolbar({
           <button
             key={color.name}
             onClick={() => onHighlightText(color.name)}
-            className={`w-5 h-5 md:w-6 md:h-6 rounded-full ${color.color} border-2 border-gray-300 dark:border-gray-600 hover:scale-110 transition-transform duration-200`}
+            className={`w-5 h-5 md:w-6 md:h-6 rounded-full ${color.color} border-2 ${
+              activeHighlight === color.name ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-300 dark:border-gray-600'
+            } hover:scale-110 transition-all duration-200`}
             title={color.title}
           />
         ))}

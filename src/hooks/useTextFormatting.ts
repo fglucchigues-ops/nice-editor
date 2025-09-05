@@ -43,34 +43,42 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const range = selection.getRangeAt(0);
     if (range.collapsed) return;
     
-    // Get the selected content
+    // Nettoyer d'abord tous les titres existants dans la sélection
+    const fragment = range.cloneContents();
+    const walker = document.createTreeWalker(
+      fragment,
+      NodeFilter.SHOW_ELEMENT,
+      {
+        acceptNode: (node) => {
+          return /^H[1-6]$/i.test(node.nodeName) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+        }
+      }
+    );
+    
+    const headingsToReplace = [];
+    let node;
+    while (node = walker.nextNode()) {
+      headingsToReplace.push(node);
+    }
+    
+    // Extraire le contenu sélectionné
     const selectedContent = range.extractContents();
     
-    // Check if we're already inside a heading and remove it
-    let parentElement = range.commonAncestorContainer;
-    if (parentElement.nodeType === Node.TEXT_NODE) {
-      parentElement = parentElement.parentElement;
-    }
+    // Nettoyer les titres existants dans le contenu extrait
+    const cleanContent = document.createDocumentFragment();
+    const childNodes = Array.from(selectedContent.childNodes);
     
-    // Remove existing heading tags
-    while (parentElement && parentElement !== editorRef.current) {
-      if (/^H[1-6]$/i.test(parentElement.tagName)) {
-        // Replace the heading with its content
-        const headingContent = parentElement.innerHTML;
-        const textNode = document.createTextNode(parentElement.textContent || '');
-        parentElement.parentNode?.replaceChild(textNode, parentElement);
-        
-        // Create new range for the text
-        const newRange = document.createRange();
-        newRange.selectNodeContents(textNode);
-        selection.removeAllRanges();
-        selection.addRange(newRange);
-        break;
+    childNodes.forEach(child => {
+      if (child.nodeType === Node.ELEMENT_NODE && /^H[1-6]$/i.test((child as Element).tagName)) {
+        // Remplacer le titre par son contenu textuel
+        const textNode = document.createTextNode(child.textContent || '');
+        cleanContent.appendChild(textNode);
+      } else {
+        cleanContent.appendChild(child);
       }
-      parentElement = parentElement.parentElement;
-    }
+    });
     
-    // Create new heading
+    // Créer le nouveau titre
     const headingTag = `h${level}`;
     const heading = document.createElement(headingTag);
     heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
@@ -79,13 +87,13 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     heading.style.margin = '1em 0 0.5em 0';
     heading.style.display = 'block';
     
-    // Add the selected content to the heading
-    heading.appendChild(selectedContent);
+    // Ajouter le contenu nettoyé au nouveau titre
+    heading.appendChild(cleanContent);
     
-    // Insert the heading
+    // Insérer le nouveau titre
     range.insertNode(heading);
     
-    // Clear selection and position cursor after heading
+    // Positionner le curseur après le titre
     selection.removeAllRanges();
     const newRange = document.createRange();
     newRange.setStartAfter(heading);
@@ -114,82 +122,134 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     document.execCommand('unlink', false);
   }, []);
 
-  // Fonction pour gérer le nettoyage intelligent du formatage
+  // Fonction pour gérer le nettoyage du formatage (sans blink)
   const handleSmartClearFormatting = useCallback(() => {
-    if (!editorRef.current) return;
-    
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    // Cas 1: Si du texte est sélectionné, appliquer le nettoyage standard
+    // Si du texte est sélectionné, appliquer le nettoyage standard
     if (!selection.isCollapsed) {
       clearFormatting();
       return;
     }
     
-    // Cas 2: Pas de sélection, créer un point de rupture de formatage
+    // Pas de sélection, créer un point de rupture simple
     try {
       const range = selection.getRangeAt(0);
       
-      // Créer un span invisible qui force un formatage neutre
-      const neutralSpan = window.document.createElement('span');
-      neutralSpan.style.cssText = `
-        font-weight: normal !important; 
-        font-style: normal !important; 
-        text-decoration: none !important; 
-        background: transparent !important;
-        color: inherit !important;
-        font-size: inherit !important;
-      `;
+      // Créer un span neutre simple (sans blink)
+      const neutralSpan = document.createElement('span');
+      neutralSpan.style.cssText = 'font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important;';
       neutralSpan.setAttribute('data-neutral-format', 'true');
       
-      // Ajouter un espace invisible comme ancre
-      const anchor = window.document.createTextNode('\u200B');
+      // Ajouter un espace invisible
+      const anchor = document.createTextNode('\u200B');
       neutralSpan.appendChild(anchor);
       
-      // Insérer le span dans le document
       range.insertNode(neutralSpan);
       
-      // Positionner le curseur après l'ancre
-      const newRange = window.document.createRange();
+      // Positionner le curseur
+      const newRange = document.createRange();
       newRange.setStartAfter(anchor);
       newRange.setEndAfter(anchor);
       selection.removeAllRanges();
       selection.addRange(newRange);
       
-      // Nettoyer le span dès qu'on tape quelque chose
-      const cleanupHandler = () => {
-        if (neutralSpan.parentNode) {
-          // Remplacer le span par son contenu
-          const parent = neutralSpan.parentNode;
-          while (neutralSpan.firstChild) {
-            parent.insertBefore(neutralSpan.firstChild, neutralSpan);
+      // Nettoyer automatiquement
+      if (editorRef.current) {
+        const cleanupHandler = () => {
+          if (neutralSpan.parentNode) {
+            neutralSpan.replaceWith(document.createTextNode(''));
           }
-          parent.removeChild(neutralSpan);
-        }
-        editorRef.current?.removeEventListener('input', cleanupHandler);
-      };
-      
-      editorRef.current?.addEventListener('input', cleanupHandler, { once: true });
+          editorRef.current?.removeEventListener('input', cleanupHandler);
+        };
+        
+        editorRef.current.addEventListener('input', cleanupHandler, { once: true });
+      }
       
     } catch (error) {
-      // Fallback simple
       clearFormatting();
     }
-  }, [clearFormatting]);
+  }, [clearFormatting, editorRef]);
 
+  // Fonction améliorée pour détecter les formats actifs
   const isFormatActive = useCallback((format: string) => {
     try {
-      return document.queryCommandState(format);
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return false;
+      
+      if (format === 'bold' || format === 'italic') {
+        return document.queryCommandState(format);
+      }
+      
+      // Pour les titres, vérifier si la sélection est dans un élément de titre
+      if (format.startsWith('h')) {
+        const range = selection.getRangeAt(0);
+        let element = range.commonAncestorContainer;
+        
+        if (element.nodeType === Node.TEXT_NODE) {
+          element = element.parentElement;
+        }
+        
+        while (element && element !== editorRef.current) {
+          if (element.tagName && element.tagName.toLowerCase() === format) {
+            return true;
+          }
+          element = element.parentElement;
+        }
+      }
+      
+      return false;
     } catch (e) {
       return false;
     }
-  }, []);
+  }, [editorRef]);
+
+  // Fonction pour détecter la couleur de surlignage active
+  const getActiveHighlight = useCallback(() => {
+    try {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return null;
+      
+      const range = selection.getRangeAt(0);
+      let element = range.commonAncestorContainer;
+      
+      if (element.nodeType === Node.TEXT_NODE) {
+        element = element.parentElement;
+      }
+      
+      while (element && element !== editorRef.current) {
+        const bgColor = window.getComputedStyle(element).backgroundColor;
+        
+        // Mapper les couleurs RGB vers les noms
+        const colorMap = {
+          'rgb(254, 243, 199)': 'yellow',
+          'rgb(219, 234, 254)': 'blue', 
+          'rgb(209, 250, 229)': 'green',
+          'rgb(252, 231, 243)': 'pink',
+          'rgb(237, 233, 254)': 'purple',
+          'rgb(254, 215, 170)': 'orange'
+        };
+        
+        if (colorMap[bgColor]) {
+          return colorMap[bgColor];
+        }
+        
+        element = element.parentElement;
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }, [editorRef]);
 
   return {
     formatText,
+    formatAsHeading,
     highlightText,
     clearFormatting,
-    isFormatActive
+    isFormatActive,
+    getActiveHighlight
   };
 }
