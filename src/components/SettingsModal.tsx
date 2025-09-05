@@ -5,11 +5,9 @@ import { X, Sun, Moon, Pin, Scroll, Plus, Minus } from 'lucide-react';
 interface Props {
   settings: Settings;
   onUpdateSetting: (key: keyof Settings, value: any) => void;
-  onClose: () => void;
-  onSave?: () => void;
 }
 
-export function SettingsModal({ settings, onUpdateSetting, onClose, onSave }: Props) {
+export function SettingsModal({ settings, onUpdateSetting }: Props) {
   const fontOptions = [
     { value: "'Inter', sans-serif", label: 'Inter (Sans-serif)' },
     { value: "'Libre Baskerville', serif", label: 'Libre Baskerville (Serif)' },
