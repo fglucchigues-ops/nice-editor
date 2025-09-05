@@ -108,8 +108,6 @@ export function ActionBar({
       pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth, pdfHeight);
       pdf.save(`${title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
       
-      setShowExportMenu(false);
-      setShowActionMenu(false);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Erreur lors de l\'export PDF');
@@ -157,8 +155,6 @@ export function ActionBar({
       window.document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      setShowExportMenu(false);
-      setShowActionMenu(false);
     } catch (error) {
       console.error('Error exporting Word:', error);
       alert('Erreur lors de l\'export Word');

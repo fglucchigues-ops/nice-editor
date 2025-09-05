@@ -46,21 +46,28 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       orange: '#fed7aa'
     };
     
-    // Couleurs pour le mode sombre avec meilleur contraste
+    // Couleurs pour le mode sombre avec texte blanc pour contraste optimal
     const darkColors: Record<string, string> = {
-      yellow: '#92400e', // Brun foncé pour le jaune
-      blue: '#1e40af',   // Bleu foncé
-      green: '#065f46',  // Vert foncé
-      pink: '#be185d',   // Rose foncé
-      purple: '#6b21a8', // Violet foncé
-      orange: '#c2410c'  // Orange foncé
+      yellow: '#d97706', // Orange foncé pour le jaune
+      blue: '#2563eb',   // Bleu moyen
+      green: '#16a34a',  // Vert moyen
+      pink: '#db2777',   // Rose moyen
+      purple: '#9333ea', // Violet moyen
+      orange: '#ea580c'  // Orange moyen
     };
     
     // Détecter le mode sombre
     const isDarkMode = document.body.classList.contains('dark');
     const colorToUse = isDarkMode ? darkColors[color] : colors[color];
     
-    document.execCommand('hiliteColor', false, colorToUse);
+    // En mode sombre, on applique aussi une couleur de texte blanche pour le contraste
+    if (isDarkMode) {
+      document.execCommand('hiliteColor', false, colorToUse);
+      // Appliquer une couleur de texte blanche pour le contraste
+      document.execCommand('foreColor', false, '#ffffff');
+    } else {
+      document.execCommand('hiliteColor', false, colorToUse);
+    }
   }, []);
 
   const clearFormatting = useCallback(() => {
@@ -225,6 +232,36 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
           return colorMap[bgColor];
         }
         node = walker.nextNode();
+      }
+      
+      // Vérifier aussi les couleurs du mode sombre
+      const darkColorMap = {
+        'rgb(217, 119, 6)': 'yellow',
+        'rgba(217, 119, 6, 1)': 'yellow',
+        'rgb(37, 99, 235)': 'blue',
+        'rgba(37, 99, 235, 1)': 'blue',
+        'rgb(22, 163, 74)': 'green',
+        'rgba(22, 163, 74, 1)': 'green',
+        'rgb(219, 39, 119)': 'pink',
+        'rgba(219, 39, 119, 1)': 'pink',
+        'rgb(147, 51, 234)': 'purple',
+        'rgba(147, 51, 234, 1)': 'purple',
+        'rgb(234, 88, 12)': 'orange',
+        'rgba(234, 88, 12, 1)': 'orange'
+      };
+      
+      // Vérifier avec les couleurs du mode sombre
+      element = range.startContainer;
+      if (element.nodeType === Node.TEXT_NODE) {
+        element = element.parentElement;
+      }
+      
+      while (element && element !== editorRef.current) {
+        const bgColor = window.getComputedStyle(element).backgroundColor;
+        if (darkColorMap[bgColor]) {
+          return darkColorMap[bgColor];
+        }
+        element = element.parentElement;
       }
       
       return null;
