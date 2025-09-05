@@ -3,33 +3,17 @@ import { useCallback, RefObject } from 'react';
 export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
   // Fonction pour obtenir les couleurs selon le thème actuel
   const getColors = useCallback(() => {
-    const isDarkMode = document.body.classList.contains('dark');
-    
-    if (isDarkMode) {
-      return {
-        colors: {
-          yellow: '#d97706',
-          blue: '#2563eb',
-          green: '#16a34a',
-          pink: '#db2777',
-          purple: '#9333ea',
-          orange: '#ea580c'
-        },
-        textColor: '#ffffff'
-      };
-    } else {
-      return {
-        colors: {
-          yellow: '#fef3c7',
-          blue: '#dbeafe',
-          green: '#d1fae5',
-          pink: '#fce7f3',
-          purple: '#ede9fe',
-          orange: '#fed7aa'
-        },
-        textColor: null // Pas de couleur de texte forcée en mode clair
-      };
-    }
+    return {
+      colors: {
+        yellow: '#fef3c7',
+        blue: '#dbeafe',
+        green: '#d1fae5',
+        pink: '#fce7f3',
+        purple: '#ede9fe',
+        orange: '#fed7aa'
+      },
+      textColor: null // Pas de couleur de texte forcée en mode clair
+    };
   }, []);
 
   const formatText = useCallback((format: string) => {
