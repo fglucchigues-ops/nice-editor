@@ -33,9 +33,6 @@ export function HelpModal({ onClose }: Props) {
       category: 'Actions',
       items: [
         { name: 'Sauvegarder', shortcut: 'Ctrl+S' },
-        { name: 'Annuler', shortcut: 'Ctrl+Z' },
-        { name: 'Rétablir', shortcut: 'Ctrl+Shift+Z' },
-        { name: 'Rétablir (alt)', shortcut: 'Ctrl+Y' },
       ]
     }
   ];

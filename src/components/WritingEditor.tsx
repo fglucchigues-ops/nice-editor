@@ -36,80 +36,24 @@ export function WritingEditor({
   const isInitializedRef = useRef(false);
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
-  const { formatAsHeading } = useTextFormatting(editorRef);
   const { selection, showToolbar, toolbarPosition } = useTextSelection(editorRef);
 
-  // Fonction pour mettre à jour les compteurs - corrigée pour les retours à la ligne
+  // Fonction pour mettre à jour les compteurs
   const updateCounters = useCallback(() => {
     if (!editorRef.current) return;
     
-    const text = editorRef.current.textContent || '';
+    // Obtenir le texte brut en préservant les espaces et retours à la ligne
+    const text = editorRef.current.innerText || '';
     setCharCount(text.length);
     
-    // Comptage des mots amélioré - gère les retours à la ligne
+    // Comptage des mots amélioré
     const cleanText = text.trim();
     if (!cleanText) {
       setWordCount(0);
     } else {
-      // Diviser par tous types d'espaces (espaces, tabs, retours à la ligne)
+      // Diviser par tous types d'espaces et retours à la ligne
       const words = cleanText.split(/[\s\n\r\t]+/).filter(word => word.length > 0);
       setWordCount(words.length);
-    }
-  }, []);
-
-  // Fonction pour sauvegarder la position du curseur
-  const saveCaretPosition = useCallback(() => {
-    if (!editorRef.current) return null;
-    
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return null;
-    
-    const range = selection.getRangeAt(0);
-    return {
-      startContainer: range.startContainer,
-      startOffset: range.startOffset,
-      endContainer: range.endContainer,
-      endOffset: range.endOffset
-    };
-  }, []);
-
-  // Fonction pour restaurer la position du curseur
-  const restoreCaretPosition = useCallback((caretPos: any) => {
-    if (!caretPos || !editorRef.current) return;
-    
-    try {
-      const selection = window.getSelection();
-      const range = window.document.createRange();
-      
-      // Vérifier si les nœuds existent toujours
-      if (editorRef.current.contains(caretPos.startContainer) && 
-          editorRef.current.contains(caretPos.endContainer)) {
-        range.setStart(caretPos.startContainer, caretPos.startOffset);
-        range.setEnd(caretPos.endContainer, caretPos.endOffset);
-        
-        if (selection) {
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      } else {
-        // Si les nœuds n'existent plus, placer le curseur à la fin
-        range.selectNodeContents(editorRef.current);
-        range.collapse(false);
-        if (selection) {
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      }
-    } catch (error) {
-      // En cas d'erreur, placer le curseur à la fin
-      const selection = window.getSelection();
-      const range = window.document.createRange();
-      range.selectNodeContents(editorRef.current);
-      range.collapse(false);
-      if (selection) {
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
     }
   }, []);
 
@@ -179,45 +123,6 @@ export function WritingEditor({
     }
   }, [clearFormatting]);
 
-  // Fonctions undo/redo utilisant l'API native du navigateur
-  const handleUndo = useCallback(() => {
-    try {
-      if (!window.document) {
-        console.error('Window document object is not available');
-        return;
-      }
-      window.document.execCommand('undo');
-      // Mettre à jour après l'undo natif
-      setTimeout(() => {
-        const title = titleRef.current?.value || '';
-        const content = editorRef.current?.innerHTML || '';
-        onUpdate(title, content);
-        updateCounters();
-      }, 0);
-    } catch (error) {
-      console.error('Undo failed:', error);
-    }
-  }, [onUpdate, updateCounters]);
-
-  const handleRedo = useCallback(() => {
-    try {
-      if (!window.document) {
-        console.error('Window document object is not available');
-        return;
-      }
-      window.document.execCommand('redo');
-      // Mettre à jour après le redo natif
-      setTimeout(() => {
-        const title = titleRef.current?.value || '';
-        const content = editorRef.current?.innerHTML || '';
-        onUpdate(title, content);
-        updateCounters();
-      }, 0);
-    } catch (error) {
-      console.error('Redo failed:', error);
-    }
-  }, [onUpdate, updateCounters]);
-
   // Focus sur le titre lors du chargement d'un document
   useEffect(() => {
     if (titleRef.current && document && !document.content) {
@@ -240,20 +145,16 @@ export function WritingEditor({
       
       // Ne mettre à jour que si le contenu a vraiment changé
       if (lastContentRef.current !== newContent) {
-        // Sauvegarder la position du curseur
-        const caretPos = saveCaretPosition();
-        
         setIsInternalUpdate(true);
         editorRef.current.innerHTML = newContent;
         lastContentRef.current = newContent;
         requestAnimationFrame(() => {
-          restoreCaretPosition(caretPos);
           updateCounters();
           setIsInternalUpdate(false);
         });
       }
     }
-  }, [document?.content, saveCaretPosition, restoreCaretPosition, updateCounters]);
+  }, [document?.content, updateCounters]);
 
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (isInternalUpdate) return;
@@ -305,45 +206,30 @@ export function WritingEditor({
           event.preventDefault();
           handleSmartClearFormatting();
           break;
-        case 'z':
+        case '1':
           event.preventDefault();
-          event.stopPropagation();
-          if (event.shiftKey) {
-            handleRedo();
+          if (altKey) {
+            formatText('h1');
           } else {
-            handleUndo();
+            highlightText('yellow');
           }
           break;
-        case 'y':
+        case '2':
           event.preventDefault();
-          event.stopPropagation();
-          handleRedo();
+          if (altKey) {
+            formatText('h2');
+          } else {
+            highlightText('blue');
+          }
           break;
-        
-      case '1':
-        event.preventDefault();
-        if (altKey) {
-          formatAsHeading(1); // h1
-        } else {
-          highlightText('yellow');
-        }
-        break;
-      case '2':
-        event.preventDefault();
-        if (altKey) {
-          formatAsHeading(2); // h2
-        } else {
-          highlightText('blue');
-        }
-        break;
-      case '3':
-        event.preventDefault();
-        if (altKey) {
-          formatAsHeading(3); // h3
-        } else {
-          highlightText('green');
-        }
-        break;
+        case '3':
+          event.preventDefault();
+          if (altKey) {
+            formatText('h3');
+          } else {
+            highlightText('green');
+          }
+          break;
         case '4':
           event.preventDefault();
           highlightText('pink');
@@ -358,7 +244,7 @@ export function WritingEditor({
           break;
       }
     }
-  }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave, handleUndo, handleRedo, formatAsHeading]);
+  }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave]);
 
   const handleViewDocuments = useCallback(() => {
     if (hasUnsavedChanges) {

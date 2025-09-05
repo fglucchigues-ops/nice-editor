@@ -12,7 +12,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
         purple: '#9333ea',
         orange: '#f97316'
       },
-      textColor: null // Pas de couleur de texte forcée en mode clair
+      textColor: '#ffffff' // Texte blanc pour tous les surlignages
     };
   }, []);
 
@@ -81,7 +81,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       // Fonctionne avec ou sans sélection
       document.execCommand('hiliteColor', false, colorToUse);
       
-      // Appliquer la couleur de texte si nécessaire (mode sombre)
+      // Appliquer la couleur de texte blanche pour tous les surlignages
       if (textColor) {
         document.execCommand('foreColor', false, textColor);
       }
