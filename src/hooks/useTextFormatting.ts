@@ -13,105 +13,26 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
   }, []);
 
   const formatAsHeading = useCallback((level: number) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    if (range.collapsed) return;
-    
     try {
-      // 1. RESET COMPLET : Supprimer tous les formatages de titre existants
-      const fragment = range.extractContents();
+      // Méthode simple et efficace avec formatBlock
+      document.execCommand('formatBlock', false, `h${level}`);
       
-      // Fonction récursive pour nettoyer tous les titres
-      const cleanTitles = (node: Node): DocumentFragment => {
-        const cleanFragment = document.createDocumentFragment();
-        
-        node.childNodes.forEach(child => {
-          if (child.nodeType === Node.ELEMENT_NODE) {
-            const element = child as Element;
-            // Si c'est un titre (h1, h2, h3, etc.), extraire le contenu
-            if (/^h[1-6]$/i.test(element.tagName)) {
-              // Récursivement nettoyer le contenu du titre
-              const cleanedContent = cleanTitles(element);
-              cleanFragment.appendChild(cleanedContent);
-            } else {
-              // Pour les autres éléments, les garder mais nettoyer leur contenu
-              const newElement = element.cloneNode(false) as Element;
-              const cleanedContent = cleanTitles(element);
-              newElement.appendChild(cleanedContent);
-              cleanFragment.appendChild(newElement);
-            }
-          } else {
-            // Nœuds de texte : les garder tels quels
-            cleanFragment.appendChild(child.cloneNode(true));
-          }
-        });
-        
-        return cleanFragment;
-      };
-      
-      // Nettoyer le fragment de tous les titres
-      const cleanedFragment = cleanTitles(fragment);
-      
-      // 2. Extraire le texte pur
-      const textContent = cleanedFragment.textContent || '';
-      
-      // 3. Créer le nouveau titre avec le texte nettoyé
-      const headingTag = `h${level}`;
-      const heading = document.createElement(headingTag);
-      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
-      heading.style.fontWeight = 'bold';
-      heading.style.lineHeight = '1.2';
-      heading.style.margin = '1em 0 0.5em 0';
-      heading.style.display = 'block';
-      heading.textContent = textContent;
-      
-      // 4. Insérer le nouveau titre
-      range.insertNode(heading);
-      
-      // 5. Positionner le curseur après le titre
-      selection.removeAllRanges();
-      const newRange = document.createRange();
-      newRange.setStartAfter(heading);
-      newRange.collapse(true);
-      selection.addRange(newRange);
-      
-      // 6. Nettoyage final du DOM
-      if (editorRef.current) {
-        // Supprimer les titres vides
-        const emptyHeadings = editorRef.current.querySelectorAll('h1:empty, h2:empty, h3:empty, h4:empty, h5:empty, h6:empty');
-        emptyHeadings.forEach(h => h.remove());
-        
-        // Supprimer les titres imbriqués restants
-        const nestedHeadings = editorRef.current.querySelectorAll('h1 h1, h1 h2, h1 h3, h2 h1, h2 h2, h2 h3, h3 h1, h3 h2, h3 h3');
-        nestedHeadings.forEach(nested => {
-          const textContent = nested.textContent || '';
-          nested.replaceWith(document.createTextNode(textContent));
-        });
-      }
-      
+      // Appliquer les styles CSS pour assurer la cohérence visuelle
+      setTimeout(() => {
+        if (editorRef.current) {
+          const headings = editorRef.current.querySelectorAll(`h${level}`);
+          headings.forEach(heading => {
+            const h = heading as HTMLElement;
+            h.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
+            h.style.fontWeight = 'bold';
+            h.style.lineHeight = '1.2';
+            h.style.margin = '1em 0 0.5em 0';
+            h.style.display = 'block';
+          });
+        }
+      }, 0);
     } catch (error) {
       console.error('Error formatting heading:', error);
-      // Fallback : formatage simple
-      const selectedText = range.toString();
-      range.deleteContents();
-      
-      const heading = document.createElement(`h${level}`);
-      heading.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
-      heading.style.fontWeight = 'bold';
-      heading.style.lineHeight = '1.2';
-      heading.style.margin = '1em 0 0.5em 0';
-      heading.style.display = 'block';
-      heading.textContent = selectedText;
-      
-      range.insertNode(heading);
-      
-      selection.removeAllRanges();
-      const newRange = document.createRange();
-      newRange.setStartAfter(heading);
-      newRange.collapse(true);
-      selection.addRange(newRange);
     }
   }, [editorRef]);
 

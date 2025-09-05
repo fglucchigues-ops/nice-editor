@@ -32,25 +32,19 @@ export function ActionBar({
 }: Props) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Track window width changes
   useEffect(() => {
     const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-      // Déterminer si on doit collapser basé sur l'espace disponible
-      setIsCollapsed(window.innerWidth < 768); // md breakpoint
+      setIsCollapsed(window.innerWidth < 640); // sm breakpoint
     };
 
+    // Set initial state
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Initialiser isCollapsed au premier rendu
-  useEffect(() => {
-    setIsCollapsed(window.innerWidth < 768);
   }, []);
 
   const handleDelete = () => {
