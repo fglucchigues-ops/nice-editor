@@ -92,14 +92,29 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    // Si pas de sélection, appliquer le formatage de paragraphe
-    if (selection.isCollapsed) {
-      document.execCommand('formatBlock', false, 'p');
-    } else {
-      // Pour une sélection, d'abord convertir en paragraphe puis nettoyer
-      document.execCommand('formatBlock', false, 'p');
-      document.execCommand('removeFormat', false);
-      document.execCommand('unlink', false);
+    try {
+      // Si pas de sélection, appliquer le formatage de paragraphe
+      if (selection.isCollapsed) {
+        document.execCommand('formatBlock', false, 'p');
+      } else {
+        // Pour une sélection, nettoyage complet et multiple
+        // 1. Convertir en paragraphe
+        document.execCommand('formatBlock', false, 'p');
+        
+        // 2. Supprimer tous les formatages (répéter pour être sûr)
+        for (let i = 0; i < 3; i++) {
+          document.execCommand('removeFormat', false);
+          document.execCommand('unlink', false);
+          document.execCommand('hiliteColor', false, 'transparent');
+          document.execCommand('backColor', false, 'transparent');
+          document.execCommand('foreColor', false, 'inherit');
+        }
+        
+        // 3. Forcer le retour à un paragraphe normal
+        document.execCommand('formatBlock', false, 'p');
+      }
+    } catch (error) {
+      console.error('Error clearing formatting:', error);
     }
   }, []);
 
@@ -110,10 +125,8 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     
     // Si du texte est sélectionné, appliquer le nettoyage standard
     if (!selection.isCollapsed) {
-      // Convertir en paragraphe puis nettoyer le formatage
-      document.execCommand('formatBlock', false, 'p');
-      document.execCommand('removeFormat', false);
-      document.execCommand('unlink', false);
+      // Nettoyage complet pour les sélections
+      clearFormatting();
       return;
     }
     

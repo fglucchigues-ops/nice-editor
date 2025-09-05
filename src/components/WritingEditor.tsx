@@ -204,7 +204,15 @@ export function WritingEditor({
     
     const text = editorRef.current.textContent || '';
     setCharCount(text.length);
-    setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0);
+    // Amélioration du comptage des mots
+    const cleanText = text.trim();
+    if (!cleanText) {
+      setWordCount(0);
+    } else {
+      // Diviser par tous types d'espaces et filtrer les chaînes vides
+      const words = cleanText.split(/\s+/).filter(word => word.length > 0);
+      setWordCount(words.length);
+    }
   }, []);
 
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,6 +264,21 @@ export function WritingEditor({
         case 'u':
           event.preventDefault();
           handleSmartClearFormatting();
+          break;
+        case 'z':
+          event.preventDefault();
+          if (event.shiftKey) {
+            // Ctrl+Shift+Z = Redo
+            document.execCommand('redo', false);
+          } else {
+            // Ctrl+Z = Undo
+            document.execCommand('undo', false);
+          }
+          break;
+        case 'y':
+          // Ctrl+Y = Redo (alternative)
+          event.preventDefault();
+          document.execCommand('redo', false);
           break;
         
       case '1':
