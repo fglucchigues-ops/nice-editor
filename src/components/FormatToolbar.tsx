@@ -33,7 +33,7 @@ export function FormatToolbar({
     },
     { 
       name: 'blue', 
-      color: isDarkMode ? 'bg-blue-600', 
+      color: 'bg-blue-600', 
       title: 'Bleu (Ctrl+2)' 
     },
     { 
