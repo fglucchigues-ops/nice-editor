@@ -31,27 +31,173 @@ export function WritingEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const [isInternalUpdate, setIsInternalUpdate] = useState(false);
+  const lastContentRef = useRef<string>('');
   
-  const { formatText, highlightText, clearFormatting, isFormatActive } = useTextFormatting();
+  const { formatText, highlightText, clearFormatting, isFormatActive, formatAsHeading } = useTextFormatting(editorRef);
   const { selection, showToolbar, toolbarPosition } = useTextSelection(editorRef);
 
-  // Focus on title when document changes
+  // Fonction pour sauvegarder la position du curseur
+  const saveCaretPosition = useCallback(() => {
+    if (!editorRef.current) return null;
+    
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+    
+    const range = selection.getRangeAt(0);
+    return {
+      startContainer: range.startContainer,
+      startOffset: range.startOffset,
+      endContainer: range.endContainer,
+      endOffset: range.endOffset
+    };
+  }, []);
+
+  // Fonction pour restaurer la position du curseur
+  const restoreCaretPosition = useCallback((caretPos: any) => {
+    if (!caretPos || !editorRef.current) return;
+    
+    try {
+      const selection = window.getSelection();
+      const range = window.document.createRange();
+      
+      // Vérifier si les nœuds existent toujours
+      if (editorRef.current.contains(caretPos.startContainer) && 
+          editorRef.current.contains(caretPos.endContainer)) {
+        range.setStart(caretPos.startContainer, caretPos.startOffset);
+        range.setEnd(caretPos.endContainer, caretPos.endOffset);
+        
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      } else {
+        // Si les nœuds n'existent plus, placer le curseur à la fin
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+    } catch (error) {
+      // En cas d'erreur, placer le curseur à la fin
+      const selection = window.getSelection();
+      const range = window.document.createRange();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+  }, []);
+
+  // Fonction pour gérer le nettoyage intelligent du formatage
+  const handleSmartClearFormatting = useCallback(() => {
+    if (!editorRef.current) return;
+    
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    // Cas 1: Si du texte est sélectionné, appliquer le nettoyage standard
+    if (!selection.isCollapsed) {
+      clearFormatting();
+      return;
+    }
+    
+    // Cas 2: Pas de sélection, forcer une rupture de formatage avec indicateur visuel
+    try {
+      const range = selection.getRangeAt(0);
+      
+      // Créer un span qui force un formatage neutre
+      const neutralSpan = window.document.createElement('span');
+      neutralSpan.style.cssText = 'font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important;';
+      neutralSpan.setAttribute('data-neutral-format', 'true');
+      
+      // Créer l'indicateur visuel clignotant
+      const blinkIndicator = window.document.createElement('span');
+      blinkIndicator.style.cssText = 'animation: blink 1s ease-in-out 3; color: #3b82f6; font-weight: bold;';
+      blinkIndicator.textContent = '|';
+      
+      // Ajouter l'indicateur et un espace invisible
+      neutralSpan.appendChild(blinkIndicator);
+      const anchor = window.document.createTextNode('\u200B'); // Zero-width space
+      neutralSpan.appendChild(anchor);
+      
+      // Insérer le span dans le document
+      range.insertNode(neutralSpan);
+      
+      // Positionner le curseur après l'ancre
+      const newRange = window.document.createRange();
+      newRange.setStartAfter(anchor);
+      newRange.setEndAfter(anchor);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+      
+      // Supprimer l'indicateur après l'animation (3 secondes)
+      setTimeout(() => {
+        if (blinkIndicator.parentNode) {
+          blinkIndicator.remove();
+        }
+      }, 3000);
+      
+      // Nettoyer le span dès qu'on tape quelque chose
+      const cleanupHandler = () => {
+        if (neutralSpan.parentNode) {
+          // Remplacer par un espace normal si besoin
+          neutralSpan.replaceWith(window.document.createTextNode(''));
+        }
+        editorRef.current?.removeEventListener('input', cleanupHandler);
+      };
+      
+      editorRef.current?.addEventListener('input', cleanupHandler, { once: true });
+      
+    } catch (error) {
+      // Fallback simple
+      clearFormatting();
+    }
+  }, [clearFormatting]);
+
+  // Focus sur le titre UNIQUEMENT lors du chargement d'un nouveau document
   useEffect(() => {
-    if (titleRef.current && document) {
-      titleRef.current.focus();
-      // Position cursor at end of title
-      const length = titleRef.current.value.length;
-      titleRef.current.setSelectionRange(length, length);
+    if (titleRef.current && document && document.id) {
+      // Délai pour éviter les conflits avec d'autres effets
+      const timer = setTimeout(() => {
+        if (titleRef.current) {
+          titleRef.current.focus();
+          const length = titleRef.current.value.length;
+          titleRef.current.setSelectionRange(length, length);
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
   }, [document?.id]);
 
-  // Update content when document changes
+  // Mise à jour du contenu quand le document change
   useEffect(() => {
-    if (document && editorRef.current) {
-      editorRef.current.innerHTML = document.content;
-      updateCounters();
+    if (document && editorRef.current && !isInternalUpdate) {
+      const newContent = document.content || '';
+      
+      // Ne mettre à jour que si le contenu a vraiment changé
+      if (lastContentRef.current !== newContent) {
+        // Sauvegarder la position du curseur
+        const caretPos = saveCaretPosition();
+        
+        setIsInternalUpdate(true);
+        editorRef.current.innerHTML = newContent;
+        lastContentRef.current = newContent;
+        
+        // Restaurer la position du curseur après un court délai
+        requestAnimationFrame(() => {
+          restoreCaretPosition(caretPos);
+          updateCounters();
+          setIsInternalUpdate(false);
+        });
+      }
     }
-  }, [document]);
+  }, [document?.content, saveCaretPosition, restoreCaretPosition]);
 
   const updateCounters = useCallback(() => {
     if (!editorRef.current) return;
@@ -61,20 +207,29 @@ export function WritingEditor({
     setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0);
   }, []);
 
-  const handleContentChange = useCallback(() => {
-    if (!editorRef.current) return;
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isInternalUpdate) return;
     
-    const title = titleRef.current?.value || '';
-    const content = editorRef.current.innerHTML;
-    
+    const title = e.target.value;
+    const content = editorRef.current?.innerHTML || '';
     onUpdate(title, content);
-    updateCounters();
-  }, [onUpdate, updateCounters]);
+  }, [onUpdate, isInternalUpdate]);
 
-  const handleInput = useCallback((e: React.FormEvent) => {
-    // Don't prevent default - let the browser handle the input naturally
-    handleContentChange();
-  }, [handleContentChange]);
+  const handleContentInput = useCallback(() => {
+    if (isInternalUpdate || !editorRef.current) return;
+    
+    const content = editorRef.current.innerHTML;
+    const title = titleRef.current?.value || '';
+    
+    // Mettre à jour la référence pour éviter les boucles
+    lastContentRef.current = content;
+    
+    // Utiliser setTimeout pour éviter les conflits avec la position du curseur
+    setTimeout(() => {
+      onUpdate(title, content);
+      updateCounters();
+    }, 0);
+  }, [onUpdate, updateCounters, isInternalUpdate]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     const { ctrlKey, metaKey, altKey, key } = event;
@@ -100,32 +255,33 @@ export function WritingEditor({
           break;
         case 'u':
           event.preventDefault();
-          clearFormatting();
+          handleSmartClearFormatting();
           break;
-        case '1':
-          event.preventDefault();
-          if (altKey) {
-            formatText('h1');
-          } else {
-            highlightText('yellow');
-          }
-          break;
-        case '2':
-          event.preventDefault();
-          if (altKey) {
-            formatText('h2');
-          } else {
-            highlightText('blue');
-          }
-          break;
-        case '3':
-          event.preventDefault();
-          if (altKey) {
-            formatText('h3');
-          } else {
-            highlightText('green');
-          }
-          break;
+        
+      case '1':
+        event.preventDefault();
+        if (altKey) {
+          formatAsHeading(1); // h1
+        } else {
+          highlightText('yellow');
+        }
+        break;
+      case '2':
+        event.preventDefault();
+        if (altKey) {
+          formatAsHeading(2); // h2
+        } else {
+          highlightText('blue');
+        }
+        break;
+      case '3':
+        event.preventDefault();
+        if (altKey) {
+          formatAsHeading(3); // h3
+        } else {
+          highlightText('green');
+        }
+        break;
         case '4':
           event.preventDefault();
           highlightText('pink');
@@ -140,7 +296,7 @@ export function WritingEditor({
           break;
       }
     }
-  }, [formatText, highlightText, clearFormatting, onSave]);
+  }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -154,7 +310,7 @@ export function WritingEditor({
           ref={titleRef}
           type="text"
           value={document?.title || ''}
-          onChange={handleContentChange}
+          onChange={handleTitleChange}
           className="w-full bg-transparent border-none outline-none text-2xl md:text-3xl lg:text-4xl font-semibold placeholder-gray-400 dark:placeholder-gray-500"
           placeholder="Titre du document"
           style={{
@@ -174,13 +330,16 @@ export function WritingEditor({
           style={{
             fontSize: `${settings.fontSize}px`,
             fontFamily: settings.fontFamily,
-            lineHeight: settings.lineHeight
+            lineHeight: settings.lineHeight,
+            direction: 'ltr',
+            unicodeBidi: 'normal',
+            writingMode: 'horizontal-tb'
           }}
-          onInput={handleInput}
+          onInput={handleContentInput}
           onKeyDown={handleKeyDown}
           data-placeholder="Commencez à écrire..."
           suppressContentEditableWarning={true}
-        ></div>
+        />
       </div>
 
       {/* Format Toolbar */}
