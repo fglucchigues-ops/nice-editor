@@ -38,8 +38,24 @@ export function WritingEditor({
   const isUndoRedoRef = useRef(false);
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
-  const { formatAsHeading } = useTextFormatting(editorRef);
   const { selection, showToolbar, toolbarPosition } = useTextSelection(editorRef);
+
+  // Fonction pour mettre à jour les compteurs (définie en premier)
+  const updateCounters = useCallback(() => {
+    if (!editorRef.current) return;
+    
+    const text = editorRef.current.textContent || '';
+    setCharCount(text.length);
+    // Amélioration du comptage des mots
+    const cleanText = text.trim();
+    if (!cleanText) {
+      setWordCount(0);
+    } else {
+      // Diviser par tous types d'espaces et filtrer les chaînes vides
+      const words = cleanText.split(/\s+/).filter(word => word.length > 0);
+      setWordCount(words.length);
+    }
+  }, []);
 
   // Fonction pour sauvegarder la position du curseur
   const saveCaretPosition = useCallback(() => {
@@ -281,23 +297,7 @@ export function WritingEditor({
         });
       }
     }
-  }, [document?.content, saveCaretPosition, restoreCaretPosition]);
-
-  const updateCounters = useCallback(() => {
-    if (!editorRef.current) return;
-    
-    const text = editorRef.current.textContent || '';
-    setCharCount(text.length);
-    // Amélioration du comptage des mots
-    const cleanText = text.trim();
-    if (!cleanText) {
-      setWordCount(0);
-    } else {
-      // Diviser par tous types d'espaces et filtrer les chaînes vides
-      const words = cleanText.split(/\s+/).filter(word => word.length > 0);
-      setWordCount(words.length);
-    }
-  }, []);
+  }, [document?.content, saveCaretPosition, restoreCaretPosition, updateCounters]);
 
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (isInternalUpdate) return;
@@ -411,7 +411,7 @@ export function WritingEditor({
           break;
       }
     }
-  }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave, handleUndo, handleRedo]);
+  }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave, handleUndo, handleRedo, formatAsHeading]);
 
   return (
     <div className="flex flex-col min-h-screen">
