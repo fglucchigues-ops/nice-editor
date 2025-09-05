@@ -33,31 +33,26 @@ export function WritingEditor({
   const [charCount, setCharCount] = useState(0);
   const [isInternalUpdate, setIsInternalUpdate] = useState(false);
   const lastContentRef = useRef<string>('');
-  const [history, setHistory] = useState<Array<{title: string, content: string}>>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const isUndoRedoRef = useRef(false);
-  const saveHistoryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSaveTimeRef = useRef<number>(0);
   const isInitializedRef = useRef(false);
-  const lastInputTypeRef = useRef<string>('');
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
   const { formatAsHeading } = useTextFormatting(editorRef);
   const { selection, showToolbar, toolbarPosition } = useTextSelection(editorRef);
 
-  // Fonction pour mettre à jour les compteurs (définie en premier)
+  // Fonction pour mettre à jour les compteurs - corrigée pour les retours à la ligne
   const updateCounters = useCallback(() => {
     if (!editorRef.current) return;
     
     const text = editorRef.current.textContent || '';
     setCharCount(text.length);
-    // Amélioration du comptage des mots
+    
+    // Comptage des mots amélioré - gère les retours à la ligne
     const cleanText = text.trim();
     if (!cleanText) {
       setWordCount(0);
     } else {
-      // Diviser par tous types d'espaces et filtrer les chaînes vides
-      const words = cleanText.split(/\s+/).filter(word => word.length > 0);
+      // Diviser par tous types d'espaces (espaces, tabs, retours à la ligne)
+      const words = cleanText.split(/[\s\n\r\t]+/).filter(word => word.length > 0);
       setWordCount(words.length);
     }
   }, []);
@@ -184,112 +179,36 @@ export function WritingEditor({
     }
   }, [clearFormatting]);
 
-  // Fonction pour sauvegarder l'état dans l'historique
-  const saveToHistory = useCallback((title: string, content: string, force: boolean = false) => {
-    if (isUndoRedoRef.current) return; // Ne pas sauvegarder pendant undo/redo
-    
-    const now = Date.now();
-    const timeSinceLastSave = now - lastSaveTimeRef.current;
-    
-    // Sauvegarder immédiatement si forcé ou si plus de 2 secondes depuis la dernière sauvegarde
-    const shouldSaveNow = force || timeSinceLastSave > 2000;
-    
-    setHistory(prev => {
-      // Éviter les doublons
-      const currentState = prev[prev.length - 1];
-      if (currentState && currentState.title === title && currentState.content === content) {
-        return prev;
-      }
-      
-      if (shouldSaveNow) {
-        const newHistory = prev.slice(0, historyIndex + 1);
-        newHistory.push({ title, content });
-        // Limiter l'historique à 50 entrées
-        if (newHistory.length > 50) {
-          newHistory.shift();
-          setHistoryIndex(prev => prev); // Garder le même index relatif
-        } else {
-          setHistoryIndex(newHistory.length - 1);
-        }
-        lastSaveTimeRef.current = now;
-        return newHistory;
-      }
-      
-      return prev;
-    });
-  }, [historyIndex]);
-
-  // Fonction undo
+  // Fonctions undo/redo utilisant l'API native du navigateur
   const handleUndo = useCallback(() => {
-    console.log('Undo called, historyIndex:', historyIndex, 'history length:', history.length);
-    
-    if (historyIndex > 0 && history.length > 1) {
-      isUndoRedoRef.current = true;
-      const prevState = history[historyIndex - 1];
-      
-      if (!prevState) {
-        isUndoRedoRef.current = false;
-        return;
-      }
-      
-      const newIndex = historyIndex - 1;
-      setHistoryIndex(newIndex);
-      
-      // Mettre à jour le titre
-      if (titleRef.current) {
-        titleRef.current.value = prevState.title;
-      }
-      
-      // Mettre à jour le contenu
-      if (editorRef.current) {
-        editorRef.current.innerHTML = prevState.content;
-      }
-      
-      // Mettre à jour le document
-      onUpdate(prevState.title, prevState.content);
-      updateCounters();
-      
+    try {
+      document.execCommand('undo');
+      // Mettre à jour après l'undo natif
       setTimeout(() => {
-        isUndoRedoRef.current = false;
-      }, 100);
+        const title = titleRef.current?.value || '';
+        const content = editorRef.current?.innerHTML || '';
+        onUpdate(title, content);
+        updateCounters();
+      }, 0);
+    } catch (error) {
+      console.error('Undo failed:', error);
     }
-  }, [historyIndex, history, onUpdate, updateCounters]);
+  }, [onUpdate, updateCounters]);
 
-  // Fonction redo
   const handleRedo = useCallback(() => {
-    console.log('Redo called, historyIndex:', historyIndex, 'history length:', history.length);
-    
-    if (historyIndex < history.length - 1 && history.length > 0) {
-      isUndoRedoRef.current = true;
-      const newIndex = historyIndex + 1;
-      const nextState = history[newIndex];
-      
-      if (!nextState) {
-        isUndoRedoRef.current = false;
-        return;
-      }
-      
-      setHistoryIndex(newIndex);
-      
-      // Mettre à jour le titre
-      if (titleRef.current) {
-        titleRef.current.value = nextState.title;
-      }
-      
-      // Mettre à jour le contenu
-      if (editorRef.current) {
-        editorRef.current.innerHTML = nextState.content;
-      }
-      
-      // Mettre à jour le document
-      onUpdate(nextState.title, nextState.content);
-      updateCounters();
-      
+    try {
+      document.execCommand('redo');
+      // Mettre à jour après le redo natif
       setTimeout(() => {
-        isUndoRedoRef.current = false;
-      }, 100);
+        const title = titleRef.current?.value || '';
+        const content = editorRef.current?.innerHTML || '';
+        onUpdate(title, content);
+        updateCounters();
+      }, 0);
+    } catch (error) {
+      console.error('Redo failed:', error);
     }
-  }, [historyIndex, history, onUpdate, updateCounters]);
+  }, [onUpdate, updateCounters]);
 
   // Focus sur le titre lors du chargement d'un document
   useEffect(() => {
@@ -319,15 +238,6 @@ export function WritingEditor({
         setIsInternalUpdate(true);
         editorRef.current.innerHTML = newContent;
         lastContentRef.current = newContent;
-        
-        // Initialiser l'historique avec le document actuel (une seule fois)
-        if (!isInitializedRef.current && (document.title || document.content)) {
-          setHistory([{ title: document.title, content: document.content }]);
-          setHistoryIndex(0);
-          isInitializedRef.current = true;
-        }
-        
-        // Restaurer la position du curseur après un court délai
         requestAnimationFrame(() => {
           restoreCaretPosition(caretPos);
           updateCounters();
@@ -342,12 +252,8 @@ export function WritingEditor({
     
     const title = e.target.value;
     const content = editorRef.current?.innerHTML || '';
-    
-    // Sauvegarder dans l'historique
-    saveToHistory(title, content);
-    
     onUpdate(title, content);
-  }, [onUpdate, isInternalUpdate, saveToHistory]);
+  }, [onUpdate, isInternalUpdate]);
 
   const handleContentInput = useCallback(() => {
     if (isInternalUpdate || !editorRef.current) return;
@@ -358,61 +264,14 @@ export function WritingEditor({
     // Mettre à jour la référence pour éviter les boucles
     lastContentRef.current = content;
     
-    // Détecter le type d'input (ajout/suppression)
-    const currentLength = content.length;
-    const previousContent = history[historyIndex]?.content || '';
-    const previousLength = previousContent.length;
-    
-    let inputType = 'typing';
-    if (currentLength > previousLength) {
-      inputType = 'insert';
-    } else if (currentLength < previousLength) {
-      inputType = 'delete';
-    }
-    
-    // Sauvegarder immédiatement si changement de type d'input
-    const shouldSaveImmediately = lastInputTypeRef.current !== inputType && lastInputTypeRef.current !== '';
-    lastInputTypeRef.current = inputType;
-    
-    // Annuler le timeout précédent
-    if (saveHistoryTimeoutRef.current) {
-      clearTimeout(saveHistoryTimeoutRef.current);
-    }
-    
-    if (shouldSaveImmediately) {
-      // Sauvegarder immédiatement lors du changement de type
-      saveToHistory(title, content, true);
-    } else {
-      // Sauvegarder avec délai pour les modifications continues
-      saveHistoryTimeoutRef.current = setTimeout(() => {
-        if (!isUndoRedoRef.current) {
-          saveToHistory(title, content, false);
-        }
-      }, 1000);
-    }
-    
-    // Sauvegarder après une pause dans la frappe
-    const pauseTimeout = setTimeout(() => {
-      if (!isUndoRedoRef.current) {
-        saveToHistory(title, content, true);
-      }
-    }, 2000);
-    
-    // Nettoyer le timeout de pause si une nouvelle input arrive
-    const cleanup = () => clearTimeout(pauseTimeout);
-    const nextInput = setTimeout(cleanup, 100);
-    
     // Utiliser setTimeout pour éviter les conflits avec la position du curseur
     setTimeout(() => {
       onUpdate(title, content);
       updateCounters();
-      clearTimeout(nextInput);
     }, 0);
-  }, [onUpdate, updateCounters, isInternalUpdate, saveToHistory, history, historyIndex]);
+  }, [onUpdate, updateCounters, isInternalUpdate]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-    console.log('Key pressed:', event.key, 'Ctrl:', event.ctrlKey, 'Meta:', event.metaKey, 'Shift:', event.shiftKey);
-    
     const { ctrlKey, metaKey, altKey, key } = event;
     const isCmd = ctrlKey || metaKey;
     
@@ -442,17 +301,14 @@ export function WritingEditor({
           event.preventDefault();
           event.stopPropagation();
           if (event.shiftKey) {
-            console.log('Redo triggered');
             handleRedo();
           } else {
-            console.log('Undo triggered');
             handleUndo();
           }
           break;
         case 'y':
           event.preventDefault();
           event.stopPropagation();
-          console.log('Redo (Ctrl+Y) triggered');
           handleRedo();
           break;
         
@@ -495,15 +351,6 @@ export function WritingEditor({
       }
     }
   }, [formatText, highlightText, clearFormatting, handleSmartClearFormatting, onSave, handleUndo, handleRedo, formatAsHeading]);
-
-  // Nettoyage du timeout au démontage
-  useEffect(() => {
-    return () => {
-      if (saveHistoryTimeoutRef.current) {
-        clearTimeout(saveHistoryTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleViewDocuments = useCallback(() => {
     if (hasUnsavedChanges) {
