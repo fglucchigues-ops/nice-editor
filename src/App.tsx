@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { WritingEditor } from './components/WritingEditor';
 import { DocumentsList } from './components/DocumentsList';
 import { SettingsModal } from './components/SettingsModal';
@@ -8,6 +9,31 @@ import { useDocuments } from './hooks/useDocuments';
 import { useSettings } from './hooks/useSettings';
 import { Document, Settings } from './types';
 import { HelpCircle } from 'lucide-react';
+
+// Page transition variants
+const pageVariants = {
+  initial: {
+    opacity: 0,
+    scale: 0.98,
+    y: 20
+  },
+  in: {
+    opacity: 1,
+    scale: 1,
+    y: 0
+  },
+  out: {
+    opacity: 0,
+    scale: 1.02,
+    y: -20
+  }
+};
+
+const pageTransition = {
+  type: "tween",
+  ease: [0.25, 0.46, 0.45, 0.94], // Cubic bezier for smooth, premium feel
+  duration: 0.4
+};
 
 // Toast component
 interface ToastProps {
@@ -48,6 +74,11 @@ function DocumentEditor() {
     deleteDocument,
     updateDocument
   } = useDocuments();
+
+  // Apply theme immediately on component mount to prevent flicker
+  useEffect(() => {
+    document.body.className = settings.theme === 'dark' ? 'dark' : '';
+  }, []);
 
   // Load document when ID changes
   useEffect(() => {
@@ -113,11 +144,19 @@ function DocumentEditor() {
   }, [hasUnsavedChanges]);
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      settings.theme === 'dark' 
-        ? 'bg-dark-paper text-gray-100' 
-        : 'bg-paper text-gray-900'
-    }`}>
+    <motion.div 
+      key="document-editor"
+      initial="initial"
+      animate="in"
+      exit="out"
+      variants={pageVariants}
+      transition={pageTransition}
+      className={`min-h-screen transition-colors duration-300 ${
+        settings.theme === 'dark' 
+          ? 'bg-dark-paper text-gray-100' 
+          : 'bg-paper text-gray-900'
+      }`}
+    >
       {/* Help Button */}
       <button
         onClick={() => setShowHelp(true)}
@@ -161,7 +200,7 @@ function DocumentEditor() {
           onClose={() => setToast(null)}
         />
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -173,6 +212,11 @@ function DocumentsListPage() {
   
   const { settings, updateSetting } = useSettings();
   const { documents, deleteDocument } = useDocuments();
+
+  // Apply theme immediately on component mount to prevent flicker
+  useEffect(() => {
+    document.body.className = settings.theme === 'dark' ? 'dark' : '';
+  }, []);
 
   // Apply theme class to body
   useEffect(() => {
@@ -197,11 +241,19 @@ function DocumentsListPage() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      settings.theme === 'dark' 
-        ? 'bg-dark-paper text-gray-100' 
-        : 'bg-paper text-gray-900'
-    }`}>
+    <motion.div 
+      key="documents-list"
+      initial="initial"
+      animate="in"
+      exit="out"
+      variants={pageVariants}
+      transition={pageTransition}
+      className={`min-h-screen transition-colors duration-300 ${
+        settings.theme === 'dark' 
+          ? 'bg-dark-paper text-gray-100' 
+          : 'bg-paper text-gray-900'
+      }`}
+    >
       <DocumentsList
         documents={documents}
         settings={settings}
@@ -229,16 +281,33 @@ function DocumentsListPage() {
           onClose={() => setToast(null)}
         />
       )}
-    </div>
+    </motion.div>
   );
 }
 
+// Apply theme immediately on app load to prevent flicker
+const savedSettings = localStorage.getItem('writing-app-settings');
+if (savedSettings) {
+  try {
+    const settings = JSON.parse(savedSettings);
+    if (settings.theme === 'dark') {
+      document.body.className = 'dark';
+    }
+  } catch (error) {
+    // Ignore parsing errors
+  }
+}
+
 function App() {
+  const location = window.location;
+  
   return (
-    <Routes>
-      <Route path="/" element={<DocumentsListPage />} />
-      <Route path="/document/:id" element={<DocumentEditor />} />
-    </Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<DocumentsListPage />} />
+        <Route path="/document/:id" element={<DocumentEditor />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
 
