@@ -75,14 +75,15 @@ export function WritingEditor({
 
   // Mise à jour du contenu quand le document change
   useEffect(() => {
-    if (document && editorRef.current && !isInternalUpdate) {
+    if (document && editorRef.current) {
       const newContent = document.content || '';
       
       // Ne mettre à jour que si le contenu a vraiment changé
-      if (lastContentRef.current !== newContent) {
+      if (lastContentRef.current !== newContent || !isInitializedRef.current) {
         setIsInternalUpdate(true);
         editorRef.current.innerHTML = newContent;
         lastContentRef.current = newContent;
+        isInitializedRef.current = true;
         requestAnimationFrame(() => {
           updateCounters();
           setIsInternalUpdate(false);

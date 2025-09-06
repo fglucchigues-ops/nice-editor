@@ -48,7 +48,7 @@ export function useDocuments() {
     };
     
     setCurrentDocument(newDoc);
-    setLastSavedContent('');
+    setLastSavedContent(''); // Reset saved content reference
     setHasUnsavedChanges(false);
   }, []);
 
