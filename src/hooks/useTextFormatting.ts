@@ -138,39 +138,64 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     
     // Si du texte est sélectionné, appliquer le nettoyage standard
     if (!selection.isCollapsed) {
-      // Nettoyage complet pour les sélections
       clearFormatting();
       return;
     }
     
-    // Pas de sélection, convertir en paragraphe et créer un point de rupture
+    // Pas de sélection - réinitialiser TOUT le formatage pour le texte futur
     try {
-      document.execCommand('formatBlock', false, 'p');
-      
+      // 1. Si on est dans un titre, convertir en paragraphe
       const range = selection.getRangeAt(0);
+      let element = range.startContainer;
+      if (element.nodeType === Node.TEXT_NODE) {
+        element = element.parentElement;
+      }
       
-      // Créer un span neutre invisible
-      const neutralSpan = document.createElement('span');
-      // Remettre la couleur par défaut selon le thème
+      // Vérifier si on est dans un titre
+      while (element && element !== editorRef.current) {
+        if (element.tagName && ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)) {
+          document.execCommand('formatBlock', false, 'p');
+          break;
+        }
+        element = element.parentElement;
+      }
+      
+      // 2. Réinitialiser TOUS les formatages pour le texte futur
       const isDark = document.body.classList.contains('dark');
-      const defaultColor = isDark ? '#f3f4f6' : '#111827'; // gray-100 pour dark, gray-900 pour light
+      const defaultColor = isDark ? '#f3f4f6' : '#111827';
+      
+      // Supprimer le gras et l'italique
+      document.execCommand('bold', false);
+      document.execCommand('italic', false);
+      
+      // Supprimer le surlignage
+      document.execCommand('hiliteColor', false, 'transparent');
+      document.execCommand('backColor', false, 'transparent');
+      
+      // Remettre la couleur par défaut
+      document.execCommand('foreColor', false, defaultColor);
+      
+      // Supprimer tous les autres formatages
+      document.execCommand('removeFormat', false);
+      
+      // 3. Créer un point d'ancrage neutre pour garantir la réinitialisation
+      const neutralSpan = document.createElement('span');
       neutralSpan.style.cssText = `font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important; color: ${defaultColor} !important;`;
       neutralSpan.setAttribute('data-neutral-format', 'true');
       
-      // Ajouter un espace invisible
       const anchor = document.createTextNode('\u200B');
       neutralSpan.appendChild(anchor);
       
+      const range = selection.getRangeAt(0);
       range.insertNode(neutralSpan);
       
-      // Positionner le curseur
       const newRange = document.createRange();
       newRange.setStartAfter(anchor);
       newRange.setEndAfter(anchor);
       selection.removeAllRanges();
       selection.addRange(newRange);
       
-      // Nettoyer automatiquement
+      // 4. Nettoyer l'ancrage dès qu'on tape
       if (editorRef.current) {
         const cleanupHandler = () => {
           if (neutralSpan.parentNode) {
@@ -183,12 +208,13 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       }
       
     } catch (error) {
+      // Fallback simple
       document.execCommand('formatBlock', false, 'p');
       document.execCommand('removeFormat', false);
-      // Remettre la couleur par défaut
       const isDark = document.body.classList.contains('dark');
       const defaultColor = isDark ? '#f3f4f6' : '#111827';
       document.execCommand('foreColor', false, defaultColor);
+      document.execCommand('hiliteColor', false, 'transparent');
     }
   }, [clearFormatting, editorRef]);
 
