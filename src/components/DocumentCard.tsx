@@ -62,7 +62,18 @@ export function DocumentCard({
 
   // Get preview text from content (strip HTML)
   const getPreviewText = (content: string, maxLength: number = 150) => {
-    const text = content.replace(/<[^>]*>/g, '').trim();
+    // Strip HTML tags and decode HTML entities
+    const text = content
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/&nbsp;/g, ' ') // Replace &nbsp; with regular space
+      .replace(/&amp;/g, '&') // Replace &amp; with &
+      .replace(/&lt;/g, '<') // Replace &lt; with <
+      .replace(/&gt;/g, '>') // Replace &gt; with >
+      .replace(/&quot;/g, '"') // Replace &quot; with "
+      .replace(/&#39;/g, "'") // Replace &#39; with '
+      .replace(/\u200B/g, '') // Remove zero-width space
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .trim();
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
