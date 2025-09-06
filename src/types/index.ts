@@ -14,8 +14,6 @@ export interface Settings {
   stickyTitle: boolean;
 }
 
-export type View = 'write' | 'documents';
-
 export interface TextSelection {
   range: Range;
   rect: DOMRect;

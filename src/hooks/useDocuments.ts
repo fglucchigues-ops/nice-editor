@@ -99,12 +99,7 @@ export function useDocuments() {
     // Update documents list
     const docs = await db.getAllDocuments();
     setDocuments(docs);
-    
-    // If we deleted the current document, create a new one
-    if (docId === currentDocument?.id) {
-      createDocument();
-    }
-  }, [db, currentDocument, createDocument]);
+  }, [db, currentDocument]);
 
   return {
     documents,
