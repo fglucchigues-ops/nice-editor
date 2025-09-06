@@ -78,18 +78,13 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const colorToUse = colors[color];
     
     if (colorToUse) {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
-      
       const currentHighlight = getActiveHighlight();
       
       if (currentHighlight === color) {
         // Même couleur - supprimer le fond
+        document.execCommand('hiliteColor', false, 'transparent');
         const isDark = document.body.classList.contains('dark');
         const defaultColor = isDark ? '#f3f4f6' : '#111827';
-        
-        // Appliquer directement le formatage
-        document.execCommand('hiliteColor', false, 'transparent');
         document.execCommand('foreColor', false, defaultColor);
       } else {
         // Couleur différente - appliquer la nouvelle couleur
@@ -137,10 +132,6 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    // Appliquer le formatage neutre
-    const isDark = document.body.classList.contains('dark');
-    const defaultColor = isDark ? '#f3f4f6' : '#111827';
-    
     // Si on est dans un titre, le convertir en paragraphe
     const currentHeading = getCurrentHeading();
     if (currentHeading) {
@@ -149,6 +140,8 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     
     // Supprimer le fond et remettre la couleur normale
     document.execCommand('hiliteColor', false, 'transparent');
+    const isDark = document.body.classList.contains('dark');
+    const defaultColor = isDark ? '#f3f4f6' : '#111827';
     document.execCommand('foreColor', false, defaultColor);
   }, [getCurrentHeading]);
 
