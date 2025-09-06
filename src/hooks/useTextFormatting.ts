@@ -20,23 +20,41 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    // Si pas de sélection, on prépare le formatage pour le texte suivant
-    if (selection.isCollapsed) {
-      if (format === 'bold' || format === 'italic') {
-        document.execCommand(format, false);
-      } else if (format.startsWith('h')) {
-        // Pour les titres sans sélection, on change le bloc courant
+    if (format === 'bold' || format === 'italic') {
+      document.execCommand(format, false);
+    } else if (format.startsWith('h')) {
+      // Pour les titres, vérifier si on est déjà dans ce titre
+      const currentHeading = getCurrentHeading();
+      if (currentHeading === format) {
+        // Même titre -> convertir en paragraphe
+        document.execCommand('formatBlock', false, 'p');
+      } else {
+        // Titre différent ou pas de titre -> appliquer le nouveau titre
         document.execCommand('formatBlock', false, format);
-      }
-    } else {
-      // Avec sélection, formatage normal
-      if (format === 'bold' || format === 'italic') {
-        document.execCommand(format, false);
-      } else if (format.startsWith('h')) {
-        formatAsHeading(parseInt(format.charAt(1)));
       }
     }
   }, []);
+
+  const getCurrentHeading = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+    
+    const range = selection.getRangeAt(0);
+    let element = range.startContainer;
+    
+    if (element.nodeType === Node.TEXT_NODE) {
+      element = element.parentElement;
+    }
+    
+    while (element && element !== editorRef.current) {
+      if (element.tagName && ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)) {
+        return element.tagName.toLowerCase();
+      }
+      element = element.parentElement;
+    }
+    
+    return null;
+  }, [editorRef]);
 
   const formatAsHeading = useCallback((level: number) => {
     try {
@@ -61,42 +79,79 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     
     if (colorToUse) {
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) {
-        // Pas de sélection - gérer le formatage pour le texte futur
-        const currentHighlight = getActiveHighlight();
-        
-        if (currentHighlight === color) {
-          // Même couleur - supprimer le surlignage
-          document.execCommand('hiliteColor', false, 'transparent');
-          // Remettre la couleur par défaut
-          const isDark = document.body.classList.contains('dark');
-          const defaultColor = isDark ? '#f3f4f6' : '#111827';
-          document.execCommand('foreColor', false, defaultColor);
-        } else {
-          // Couleur différente - appliquer la nouvelle couleur
-          document.execCommand('hiliteColor', false, colorToUse);
-          document.execCommand('foreColor', false, textColor);
-        }
-        return;
-      }
+      if (!selection || selection.rangeCount === 0) return;
       
-      // Avec sélection - vérifier si c'est la même couleur
       const currentHighlight = getActiveHighlight();
       
       if (currentHighlight === color) {
-        // Même couleur - supprimer le surlignage
-        document.execCommand('hiliteColor', false, 'transparent');
-        // Remettre la couleur par défaut
+        // Même couleur - créer une rupture sans formatage
         const isDark = document.body.classList.contains('dark');
         const defaultColor = isDark ? '#f3f4f6' : '#111827';
-        document.execCommand('foreColor', false, textColor);
+        
+        if (selection.isCollapsed) {
+          // Pas de sélection - créer une rupture pour le texte futur
+          createFormattingBreak(defaultColor, 'transparent');
+        } else {
+          // Avec sélection - supprimer le surlignage
+          document.execCommand('hiliteColor', false, 'transparent');
+          document.execCommand('foreColor', false, defaultColor);
+        }
       } else {
-        // Couleur différente - appliquer la nouvelle couleur
-        document.execCommand('hiliteColor', false, colorToUse);
-        document.execCommand('foreColor', false, textColor);
+        // Couleur différente - appliquer la nouvelle
+        if (selection.isCollapsed) {
+          // Pas de sélection - créer une rupture avec la nouvelle couleur
+          createFormattingBreak(textColor, colorToUse);
+        } else {
+          // Avec sélection - appliquer directement
+          document.execCommand('hiliteColor', false, colorToUse);
+          document.execCommand('foreColor', false, textColor);
+        }
       }
     }
   }, [getColors]);
+
+  const createFormattingBreak = useCallback((textColor: string, backgroundColor: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    try {
+      const range = selection.getRangeAt(0);
+      
+      // Créer un span avec le formatage souhaité
+      const span = document.createElement('span');
+      span.style.color = textColor;
+      span.style.backgroundColor = backgroundColor;
+      span.setAttribute('data-formatting-break', 'true');
+      
+      // Ajouter un caractère invisible pour positionner le curseur
+      const anchor = document.createTextNode('\u200B');
+      span.appendChild(anchor);
+      
+      // Insérer le span
+      range.insertNode(span);
+      
+      // Positionner le curseur après l'ancre
+      const newRange = document.createRange();
+      newRange.setStartAfter(anchor);
+      newRange.setEndAfter(anchor);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+      
+      // Nettoyer l'ancre dès qu'on tape
+      if (editorRef.current) {
+        const cleanupHandler = () => {
+          if (span.parentNode) {
+            span.replaceWith(document.createTextNode(''));
+          }
+          editorRef.current?.removeEventListener('input', cleanupHandler);
+        };
+        
+        editorRef.current.addEventListener('input', cleanupHandler, { once: true });
+      }
+    } catch (error) {
+      console.error('Error creating formatting break:', error);
+    }
+  }, [editorRef]);
 
   const clearFormatting = useCallback(() => {
     const selection = window.getSelection();
@@ -142,81 +197,19 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       return;
     }
     
-    // Pas de sélection - réinitialiser TOUT le formatage pour le texte futur
-    try {
-      // 1. Si on est dans un titre, convertir en paragraphe
-      const range = selection.getRangeAt(0);
-      let element = range.startContainer;
-      if (element.nodeType === Node.TEXT_NODE) {
-        element = element.parentElement;
-      }
-      
-      // Vérifier si on est dans un titre
-      while (element && element !== editorRef.current) {
-        if (element.tagName && ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)) {
-          document.execCommand('formatBlock', false, 'p');
-          break;
-        }
-        element = element.parentElement;
-      }
-      
-      // 2. Réinitialiser TOUS les formatages pour le texte futur
-      const isDark = document.body.classList.contains('dark');
-      const defaultColor = isDark ? '#f3f4f6' : '#111827';
-      
-      // Supprimer le gras et l'italique
-      document.execCommand('bold', false);
-      document.execCommand('italic', false);
-      
-      // Supprimer le surlignage
-      document.execCommand('hiliteColor', false, 'transparent');
-      document.execCommand('backColor', false, 'transparent');
-      
-      // Remettre la couleur par défaut
-      document.execCommand('foreColor', false, defaultColor);
-      
-      // Supprimer tous les autres formatages
-      document.execCommand('removeFormat', false);
-      
-      // 3. Créer un point d'ancrage neutre pour garantir la réinitialisation
-      const neutralSpan = document.createElement('span');
-      neutralSpan.style.cssText = `font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important; color: ${defaultColor} !important;`;
-      neutralSpan.setAttribute('data-neutral-format', 'true');
-      
-      const anchor = document.createTextNode('\u200B');
-      neutralSpan.appendChild(anchor);
-      
-      range = selection.getRangeAt(0);
-      range.insertNode(neutralSpan);
-      
-      const newRange = document.createRange();
-      newRange.setStartAfter(anchor);
-      newRange.setEndAfter(anchor);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-      
-      // 4. Nettoyer l'ancrage dès qu'on tape
-      if (editorRef.current) {
-        const cleanupHandler = () => {
-          if (neutralSpan.parentNode) {
-            neutralSpan.replaceWith(document.createTextNode(''));
-          }
-          editorRef.current?.removeEventListener('input', cleanupHandler);
-        };
-        
-        editorRef.current.addEventListener('input', cleanupHandler, { once: true });
-      }
-      
-    } catch (error) {
-      // Fallback simple
+    // Pas de sélection - créer une rupture complètement neutre
+    const isDark = document.body.classList.contains('dark');
+    const defaultColor = isDark ? '#f3f4f6' : '#111827';
+    
+    // Si on est dans un titre, le convertir en paragraphe
+    const currentHeading = getCurrentHeading();
+    if (currentHeading) {
       document.execCommand('formatBlock', false, 'p');
-      document.execCommand('removeFormat', false);
-      const isDark = document.body.classList.contains('dark');
-      const defaultColor = isDark ? '#f3f4f6' : '#111827';
-      document.execCommand('foreColor', false, defaultColor);
-      document.execCommand('hiliteColor', false, 'transparent');
     }
-  }, [clearFormatting, editorRef]);
+    
+    // Créer une rupture de formatage neutre
+    createFormattingBreak(defaultColor, 'transparent');
+  }, [getCurrentHeading, createFormattingBreak]);
 
   // Fonction améliorée pour détecter les formats actifs
   const isFormatActive = useCallback((format: string) => {
@@ -325,6 +318,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     formatAsHeading,
     highlightText,
     clearFormatting,
+    handleSmartClearFormatting,
     isFormatActive,
     getActiveHighlight
   };
