@@ -36,7 +36,6 @@ export function WritingEditor({
   const isInitializedRef = useRef(false);
 
   const { formatText, highlightText, clearFormatting, isFormatActive, getActiveHighlight } = useTextFormatting(editorRef);
-  const { handleSmartClearFormatting } = useTextFormatting(editorRef);
   const { selection, showToolbar, toolbarPosition } = useTextSelection(editorRef);
 
   // Fonction pour mettre à jour les compteurs
@@ -57,65 +56,6 @@ export function WritingEditor({
       setWordCount(words.length);
     }
   }, []);
-
-  // Fonction pour gérer le nettoyage intelligent du formatage
-  const handleSmartClearFormatting = useCallback(() => {
-    if (!editorRef.current) return;
-    
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    // Cas 1: Si du texte est sélectionné, appliquer le nettoyage standard
-    if (!selection.isCollapsed) {
-      clearFormatting();
-      return;
-    }
-    
-    // Cas 2: Pas de sélection, forcer une rupture de formatage avec indicateur visuel
-    try {
-      const range = selection.getRangeAt(0);
-      
-      // Créer un span qui force un formatage neutre
-      const neutralSpan = window.document.createElement('span');
-      neutralSpan.style.cssText = 'font-weight: normal !important; font-style: normal !important; text-decoration: none !important; background: transparent !important;';
-      neutralSpan.setAttribute('data-neutral-format', 'true');
-      
-      const anchor = window.document.createTextNode('\u200B'); // Zero-width space
-      neutralSpan.appendChild(anchor);
-      
-      // Insérer le span dans le document
-      range.insertNode(neutralSpan);
-      
-      // Positionner le curseur après l'ancre
-      const newRange = window.document.createRange();
-      newRange.setStartAfter(anchor);
-      newRange.setEndAfter(anchor);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-      
-      // Supprimer l'indicateur après l'animation (3 secondes)
-      setTimeout(() => {
-        if (blinkIndicator.parentNode) {
-          blinkIndicator.remove();
-        }
-      }, 3000);
-      
-      // Nettoyer le span dès qu'on tape quelque chose
-      const cleanupHandler = () => {
-        if (neutralSpan.parentNode) {
-          // Remplacer par un espace normal si besoin
-          neutralSpan.replaceWith(window.document.createTextNode(''));
-        }
-        editorRef.current?.removeEventListener('input', cleanupHandler);
-      };
-      
-      editorRef.current?.addEventListener('input', cleanupHandler, { once: true });
-      
-    } catch (error) {
-      // Fallback simple
-      clearFormatting();
-    }
-  }, [clearFormatting]);
 
   // Focus sur le titre lors du chargement d'un document
   useEffect(() => {
