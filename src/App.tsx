@@ -44,7 +44,7 @@ const pageVariants = {
   },
   out: {
     opacity: 0,
-    y: -8
+    y: 0
   }
 };
 
