@@ -69,9 +69,14 @@ export function useDocuments() {
     };
     
     setCurrentDocument(updatedDoc);
+    
+    // Compare with the last saved version of this specific document
+    const savedDoc = documents.find(d => d.id === currentDocument.id);
+    const savedTitle = savedDoc?.title || '';
+    const savedContent = savedDoc?.content || '';
+    
     setHasUnsavedChanges(
-      content !== lastSavedContent || 
-      title !== (documents.find(d => d.id === currentDocument.id)?.title || '')
+      content !== savedContent || title !== savedTitle
     );
   }, [currentDocument, lastSavedContent, documents]);
 
