@@ -78,26 +78,29 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const colorToUse = colors[color];
     
     if (colorToUse) {
+      // Créer un span avec la couleur de fond
+      const span = document.createElement('span');
+      span.style.backgroundColor = colorToUse;
+      span.style.color = textColor;
+      
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return;
       
       const currentHighlight = getActiveHighlight();
       
       if (currentHighlight === color) {
-        // Même couleur - supprimer le formatage
+        // Même couleur - créer une rupture sans fond
         const isDark = document.body.classList.contains('dark');
         const defaultColor = isDark ? '#f3f4f6' : '#111827';
-        
-        // Toujours créer une rupture neutre pour le texte futur
-        createFormattingBreak(defaultColor, 'transparent');
+        createFormattingBreak(defaultColor, null);
       } else {
-        // Couleur différente - toujours créer une rupture avec la nouvelle couleur
+        // Couleur différente - créer une rupture avec la nouvelle couleur
         createFormattingBreak(textColor, colorToUse);
       }
     }
   }, [getColors]);
 
-  const createFormattingBreak = useCallback((textColor: string, backgroundColor: string) => {
+  const createFormattingBreak = useCallback((textColor: string, backgroundColor: string | null) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
@@ -107,7 +110,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       // Créer un span avec le formatage souhaité
       const span = document.createElement('span');
       span.style.color = textColor;
-      if (backgroundColor !== 'transparent') {
+      if (backgroundColor) {
         span.style.backgroundColor = backgroundColor;
       }
       span.setAttribute('data-formatting-break', 'true');
@@ -183,7 +186,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    // Toujours créer une rupture neutre pour le texte futur
+    // Créer une rupture neutre pour le texte futur
     const isDark = document.body.classList.contains('dark');
     const defaultColor = isDark ? '#f3f4f6' : '#111827';
     
@@ -194,7 +197,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     }
     
     // Créer une rupture de formatage neutre
-    createFormattingBreak(defaultColor, 'transparent');
+    createFormattingBreak(defaultColor, null);
   }, [getCurrentHeading, createFormattingBreak]);
 
   // Fonction améliorée pour détecter les formats actifs
