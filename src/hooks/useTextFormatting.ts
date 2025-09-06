@@ -84,28 +84,15 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       const currentHighlight = getActiveHighlight();
       
       if (currentHighlight === color) {
-        // Même couleur - créer une rupture sans formatage
+        // Même couleur - supprimer le formatage
         const isDark = document.body.classList.contains('dark');
         const defaultColor = isDark ? '#f3f4f6' : '#111827';
         
-        if (selection.isCollapsed) {
-          // Pas de sélection - créer une rupture pour le texte futur
-          createFormattingBreak(defaultColor, 'transparent');
-        } else {
-          // Avec sélection - supprimer le surlignage
-          document.execCommand('hiliteColor', false, 'transparent');
-          document.execCommand('foreColor', false, defaultColor);
-        }
+        // Toujours créer une rupture neutre pour le texte futur
+        createFormattingBreak(defaultColor, 'transparent');
       } else {
-        // Couleur différente - appliquer la nouvelle
-        if (selection.isCollapsed) {
-          // Pas de sélection - créer une rupture avec la nouvelle couleur
-          createFormattingBreak(textColor, colorToUse);
-        } else {
-          // Avec sélection - appliquer directement
-          document.execCommand('hiliteColor', false, colorToUse);
-          document.execCommand('foreColor', false, textColor);
-        }
+        // Couleur différente - toujours créer une rupture avec la nouvelle couleur
+        createFormattingBreak(textColor, colorToUse);
       }
     }
   }, [getColors]);
@@ -120,7 +107,9 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       // Créer un span avec le formatage souhaité
       const span = document.createElement('span');
       span.style.color = textColor;
-      span.style.backgroundColor = backgroundColor;
+      if (backgroundColor !== 'transparent') {
+        span.style.backgroundColor = backgroundColor;
+      }
       span.setAttribute('data-formatting-break', 'true');
       
       // Ajouter un caractère invisible pour positionner le curseur
@@ -141,7 +130,10 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       if (editorRef.current) {
         const cleanupHandler = () => {
           if (span.parentNode) {
-            span.replaceWith(document.createTextNode(''));
+            // Remplacer par un nœud texte vide qui hérite du formatage du span
+            const textNode = document.createTextNode('');
+            span.parentNode.insertBefore(textNode, span);
+            span.remove();
           }
           editorRef.current?.removeEventListener('input', cleanupHandler);
         };
@@ -191,13 +183,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    // Si du texte est sélectionné, appliquer le nettoyage standard
-    if (!selection.isCollapsed) {
-      clearFormatting();
-      return;
-    }
-    
-    // Pas de sélection - créer une rupture complètement neutre
+    // Toujours créer une rupture neutre pour le texte futur
     const isDark = document.body.classList.contains('dark');
     const defaultColor = isDark ? '#f3f4f6' : '#111827';
     
