@@ -75,7 +75,11 @@ function DocumentEditor() {
   };
 
   const handleSave = async () => {
-    await saveDocument();
+    const savedDoc = await saveDocument();
+    // If we were on /document/new, redirect to the saved document's URL
+    if (id === 'new' && savedDoc?.id) {
+      navigate(`/document/${savedDoc.id}`, { replace: true });
+    }
     showToast('Document sauvegardé');
   };
 

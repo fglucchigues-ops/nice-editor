@@ -86,6 +86,8 @@ export function useDocuments() {
     // Update documents list
     const docs = await db.getAllDocuments();
     setDocuments(docs);
+    
+    return savedDoc;
   }, [db, currentDocument]);
 
   const deleteDocument = useCallback(async (id?: number) => {
