@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { WritingEditor } from './components/WritingEditor';
 import { DocumentsList } from './components/DocumentsList';
@@ -10,12 +10,34 @@ import { useSettings } from './hooks/useSettings';
 import { Document, Settings } from './types';
 import { HelpCircle } from 'lucide-react';
 
+// Apply theme immediately on app load to prevent flicker
+const applyThemeImmediately = () => {
+  const savedSettings = localStorage.getItem('writing-app-settings');
+  if (savedSettings) {
+    try {
+      const settings = JSON.parse(savedSettings);
+      if (settings.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+      }
+    } catch (error) {
+      // Ignore parsing errors
+    }
+  }
+};
+
+// Call immediately
+applyThemeImmediately();
+
 // Page transition variants
 const pageVariants = {
   initial: {
     opacity: 0,
-    scale: 0.98,
-    y: 20
+    scale: 0.96,
+    y: 40
   },
   in: {
     opacity: 1,
@@ -24,15 +46,15 @@ const pageVariants = {
   },
   out: {
     opacity: 0,
-    scale: 1.02,
-    y: -20
+    scale: 1.04,
+    y: -40
   }
 };
 
 const pageTransition = {
   type: "tween",
-  ease: [0.25, 0.46, 0.45, 0.94], // Cubic bezier for smooth, premium feel
-  duration: 0.4
+  ease: [0.25, 0.46, 0.45, 0.94], // Premium cubic bezier
+  duration: 0.5
 };
 
 // Toast component
@@ -75,10 +97,19 @@ function DocumentEditor() {
     updateDocument
   } = useDocuments();
 
-  // Apply theme immediately on component mount to prevent flicker
+  // Apply theme immediately on component mount
   useEffect(() => {
-    document.body.className = settings.theme === 'dark' ? 'dark' : '';
-  }, []);
+    const applyTheme = () => {
+      if (settings.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+      }
+    };
+    applyTheme();
+  }, [settings.theme]);
 
   // Load document when ID changes
   useEffect(() => {
@@ -97,12 +128,7 @@ function DocumentEditor() {
       // Pas d'ID, créer un nouveau document
       createDocument();
     }
-  }, [id, createDocument, openDocument, navigate, documents]);
-
-  // Apply theme class to body
-  useEffect(() => {
-    document.body.className = settings.theme === 'dark' ? 'dark' : '';
-  }, [settings.theme]);
+  }, [id, documents]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
@@ -144,19 +170,11 @@ function DocumentEditor() {
   }, [hasUnsavedChanges]);
 
   return (
-    <motion.div 
-      key="document-editor"
-      initial="initial"
-      animate="in"
-      exit="out"
-      variants={pageVariants}
-      transition={pageTransition}
-      className={`min-h-screen transition-colors duration-300 ${
-        settings.theme === 'dark' 
-          ? 'bg-dark-paper text-gray-100' 
-          : 'bg-paper text-gray-900'
-      }`}
-    >
+    <div className={`min-h-screen transition-colors duration-300 ${
+      settings.theme === 'dark' 
+        ? 'bg-dark-paper text-gray-100' 
+        : 'bg-paper text-gray-900'
+    }`}>
       {/* Help Button */}
       <button
         onClick={() => setShowHelp(true)}
@@ -184,7 +202,6 @@ function DocumentEditor() {
           settings={settings}
           onUpdateSetting={updateSetting}
           onClose={() => setShowSettings(false)}
-          onSave={handleSave}
         />
       )}
 
@@ -200,7 +217,7 @@ function DocumentEditor() {
           onClose={() => setToast(null)}
         />
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -213,14 +230,18 @@ function DocumentsListPage() {
   const { settings, updateSetting } = useSettings();
   const { documents, deleteDocument } = useDocuments();
 
-  // Apply theme immediately on component mount to prevent flicker
+  // Apply theme immediately on component mount
   useEffect(() => {
-    document.body.className = settings.theme === 'dark' ? 'dark' : '';
-  }, []);
-
-  // Apply theme class to body
-  useEffect(() => {
-    document.body.className = settings.theme === 'dark' ? 'dark' : '';
+    const applyTheme = () => {
+      if (settings.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+      }
+    };
+    applyTheme();
   }, [settings.theme]);
 
   const handleCreateNew = () => {
@@ -241,19 +262,11 @@ function DocumentsListPage() {
   };
 
   return (
-    <motion.div 
-      key="documents-list"
-      initial="initial"
-      animate="in"
-      exit="out"
-      variants={pageVariants}
-      transition={pageTransition}
-      className={`min-h-screen transition-colors duration-300 ${
-        settings.theme === 'dark' 
-          ? 'bg-dark-paper text-gray-100' 
-          : 'bg-paper text-gray-900'
-      }`}
-    >
+    <div className={`min-h-screen transition-colors duration-300 ${
+      settings.theme === 'dark' 
+        ? 'bg-dark-paper text-gray-100' 
+        : 'bg-paper text-gray-900'
+    }`}>
       <DocumentsList
         documents={documents}
         settings={settings}
@@ -269,7 +282,6 @@ function DocumentsListPage() {
           settings={settings}
           onUpdateSetting={updateSetting}
           onClose={() => setShowSettings(false)}
-          onSave={() => {}}
         />
       )}
 
@@ -281,31 +293,44 @@ function DocumentsListPage() {
           onClose={() => setToast(null)}
         />
       )}
-    </motion.div>
+    </div>
   );
 }
 
-// Apply theme immediately on app load to prevent flicker
-const savedSettings = localStorage.getItem('writing-app-settings');
-if (savedSettings) {
-  try {
-    const settings = JSON.parse(savedSettings);
-    if (settings.theme === 'dark') {
-      document.body.className = 'dark';
-    }
-  } catch (error) {
-    // Ignore parsing errors
-  }
-}
-
 function App() {
-  const location = window.location;
+  const location = useLocation();
   
   return (
     <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<DocumentsListPage />} />
-        <Route path="/document/:id" element={<DocumentEditor />} />
+        <Route 
+          path="/" 
+          element={
+            <motion.div
+              initial="initial"
+              animate="in"
+              exit="out"
+              variants={pageVariants}
+              transition={pageTransition}
+            >
+              <DocumentsListPage />
+            </motion.div>
+          } 
+        />
+        <Route 
+          path="/document/:id" 
+          element={
+            <motion.div
+              initial="initial"
+              animate="in"
+              exit="out"
+              variants={pageVariants}
+              transition={pageTransition}
+            >
+              <DocumentEditor />
+            </motion.div>
+          } 
+        />
       </Routes>
     </AnimatePresence>
   );

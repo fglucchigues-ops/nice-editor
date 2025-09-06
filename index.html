@@ -7,6 +7,18 @@
     <title>Écriture Minimaliste</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
+      /* Prevent theme flash by applying theme immediately */
+      :root {
+        color-scheme: light dark;
+      }
+      
+      /* Apply saved theme immediately to prevent flash */
+      html.dark,
+      html.dark body {
+        background-color: #1a1a1a !important;
+        color: #f3f4f6 !important;
+      }
+      
       /* Custom CSS for better text selection and formatting */
       *::selection {
         background: rgba(59, 130, 246, 0.2);
