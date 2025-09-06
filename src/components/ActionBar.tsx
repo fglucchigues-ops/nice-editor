@@ -47,10 +47,8 @@ export function ActionBar({
   }, []);
 
   const handleDelete = () => {
-    if (hasDocument && confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
+    if (hasDocument) {
       onDelete();
-      // Rediriger vers la liste des documents après suppression
-      onViewDocuments();
     }
   };
 
