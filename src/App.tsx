@@ -157,7 +157,7 @@ function DocumentEditor() {
 }
 
 // Component for documents list route
-function DocumentsList() {
+function DocumentsListPage() {
   const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -227,7 +227,7 @@ function DocumentsList() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<DocumentsList />} />
+      <Route path="/" element={<DocumentsListPage />} />
       <Route path="/document/:id" element={<DocumentEditor />} />
     </Routes>
   );
