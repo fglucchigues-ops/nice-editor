@@ -78,75 +78,26 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const colorToUse = colors[color];
     
     if (colorToUse) {
-      // Créer un span avec la couleur de fond
-      const span = document.createElement('span');
-      span.style.backgroundColor = colorToUse;
-      span.style.color = textColor;
-      
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return;
       
       const currentHighlight = getActiveHighlight();
       
       if (currentHighlight === color) {
-        // Même couleur - créer une rupture sans fond
+        // Même couleur - supprimer le fond
         const isDark = document.body.classList.contains('dark');
         const defaultColor = isDark ? '#f3f4f6' : '#111827';
-        createFormattingBreak(defaultColor, null);
+        
+        // Appliquer directement le formatage
+        document.execCommand('hiliteColor', false, 'transparent');
+        document.execCommand('foreColor', false, defaultColor);
       } else {
-        // Couleur différente - créer une rupture avec la nouvelle couleur
-        createFormattingBreak(textColor, colorToUse);
+        // Couleur différente - appliquer la nouvelle couleur
+        document.execCommand('hiliteColor', false, colorToUse);
+        document.execCommand('foreColor', false, textColor);
       }
     }
   }, [getColors]);
-
-  const createFormattingBreak = useCallback((textColor: string, backgroundColor: string | null) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    try {
-      const range = selection.getRangeAt(0);
-      
-      // Créer un span avec le formatage souhaité
-      const span = document.createElement('span');
-      span.style.color = textColor;
-      if (backgroundColor) {
-        span.style.backgroundColor = backgroundColor;
-      }
-      span.setAttribute('data-formatting-break', 'true');
-      
-      // Ajouter un caractère invisible pour positionner le curseur
-      const anchor = document.createTextNode('\u200B');
-      span.appendChild(anchor);
-      
-      // Insérer le span
-      range.insertNode(span);
-      
-      // Positionner le curseur après l'ancre
-      const newRange = document.createRange();
-      newRange.setStartAfter(anchor);
-      newRange.setEndAfter(anchor);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-      
-      // Nettoyer l'ancre dès qu'on tape
-      if (editorRef.current) {
-        const cleanupHandler = () => {
-          if (span.parentNode) {
-            // Remplacer par un nœud texte vide qui hérite du formatage du span
-            const textNode = document.createTextNode('');
-            span.parentNode.insertBefore(textNode, span);
-            span.remove();
-          }
-          editorRef.current?.removeEventListener('input', cleanupHandler);
-        };
-        
-        editorRef.current.addEventListener('input', cleanupHandler, { once: true });
-      }
-    } catch (error) {
-      console.error('Error creating formatting break:', error);
-    }
-  }, [editorRef]);
 
   const clearFormatting = useCallback(() => {
     const selection = window.getSelection();
@@ -186,7 +137,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    // Créer une rupture neutre pour le texte futur
+    // Appliquer le formatage neutre
     const isDark = document.body.classList.contains('dark');
     const defaultColor = isDark ? '#f3f4f6' : '#111827';
     
@@ -196,9 +147,10 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       document.execCommand('formatBlock', false, 'p');
     }
     
-    // Créer une rupture de formatage neutre
-    createFormattingBreak(defaultColor, null);
-  }, [getCurrentHeading, createFormattingBreak]);
+    // Supprimer le fond et remettre la couleur normale
+    document.execCommand('hiliteColor', false, 'transparent');
+    document.execCommand('foreColor', false, defaultColor);
+  }, [getCurrentHeading]);
 
   // Fonction améliorée pour détecter les formats actifs
   const isFormatActive = useCallback((format: string) => {
