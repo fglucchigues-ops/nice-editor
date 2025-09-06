@@ -81,11 +81,8 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       const currentHighlight = getActiveHighlight();
       
       if (currentHighlight === color) {
-        // Même couleur - supprimer le fond
-        document.execCommand('hiliteColor', false, 'transparent');
-        const isDark = document.body.classList.contains('dark');
-        const defaultColor = isDark ? '#f3f4f6' : '#111827';
-        document.execCommand('foreColor', false, defaultColor);
+        // Même couleur - créer une rupture pour supprimer le formatage
+        createFormattingBreak();
       } else {
         // Couleur différente - appliquer la nouvelle couleur
         document.execCommand('hiliteColor', false, colorToUse);
@@ -93,6 +90,29 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       }
     }
   }, [getColors]);
+
+  const createFormattingBreak = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    const range = selection.getRangeAt(0);
+    
+    // Créer un span neutre pour le texte qui suit
+    const span = document.createElement('span');
+    const isDark = document.body.classList.contains('dark');
+    const defaultColor = isDark ? '#f3f4f6' : '#111827';
+    span.style.color = defaultColor;
+    span.style.backgroundColor = 'transparent';
+    
+    // Insérer le span à la position du curseur
+    range.insertNode(span);
+    
+    // Placer le curseur dans le span
+    range.setStart(span, 0);
+    range.setEnd(span, 0);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }, []);
 
   const clearFormatting = useCallback(() => {
     const selection = window.getSelection();
@@ -138,11 +158,8 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       document.execCommand('formatBlock', false, 'p');
     }
     
-    // Supprimer le fond et remettre la couleur normale
-    document.execCommand('hiliteColor', false, 'transparent');
-    const isDark = document.body.classList.contains('dark');
-    const defaultColor = isDark ? '#f3f4f6' : '#111827';
-    document.execCommand('foreColor', false, defaultColor);
+    // Créer une rupture pour supprimer le formatage
+    createFormattingBreak();
   }, [getCurrentHeading]);
 
   // Fonction améliorée pour détecter les formats actifs
