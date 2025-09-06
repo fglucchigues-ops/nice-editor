@@ -24,6 +24,10 @@ export function useDocuments() {
         const latest = docs[0];
         setCurrentDocument(latest);
         setLastSavedContent(latest.content);
+      } else {
+        // No documents, start with empty document
+        setCurrentDocument(null);
+        setLastSavedContent('');
       }
     };
     

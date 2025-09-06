@@ -63,7 +63,6 @@ function DocumentEditor() {
         navigate('/');
       }
     }
-  }, [id, createDocument, openDocument, navigate]);
 
   // Apply theme class to body
   useEffect(() => {
