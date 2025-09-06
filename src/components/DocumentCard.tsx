@@ -25,6 +25,21 @@ export function DocumentCard({
 }: Props) {
   const [showMenu, setShowMenu] = useState(false);
 
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMenu) {
+        const target = event.target as Element;
+        if (!target.closest('.document-card-menu')) {
+          setShowMenu(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
   const handleExportPDF = (e: React.MouseEvent) => {
     e.stopPropagation();
     // PDF export logic will be implemented
@@ -41,9 +56,7 @@ export function DocumentCard({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Êtes-vous sûr de vouloir supprimer "${document.title}" ?`)) {
-      onDelete();
-    }
+    onDelete();
     setShowMenu(false);
   };
 
@@ -72,7 +85,7 @@ export function DocumentCard({
         
         {/* Dropdown Menu */}
         {showMenu && (
-          <div className="absolute right-0 top-8 md:top-10 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 md:min-w-40 z-10">
+          <div className="document-card-menu absolute right-0 top-8 md:top-10 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 md:min-w-40 z-10">
             <button
               onClick={handleExportPDF}
               className="w-full px-3 md:px-4 py-2 text-left text-xs md:text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2 text-gray-700 dark:text-gray-300"
@@ -123,16 +136,6 @@ export function DocumentCard({
         </div>
       </div>
 
-      {/* Click outside to close menu */}
-      {showMenu && (
-        <div
-          className="fixed inset-0 z-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMenu(false);
-          }}
-        />
-      )}
     </div>
   );
 }

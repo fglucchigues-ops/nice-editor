@@ -76,17 +76,19 @@ function DocumentEditor() {
 
   const handleSave = async () => {
     await saveDocument();
-    // Update URL with document ID after save
-    if (currentDocument?.id && id === 'new') {
-      navigate(`/document/${currentDocument.id}`, { replace: true });
-    }
     showToast('Document sauvegardé');
   };
 
   const handleDelete = async () => {
-    await deleteDocument();
-    showToast('Document supprimé');
-    navigate('/');
+    const confirmDelete = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer "${currentDocument?.title || 'ce document'}" ?\n\nCette action est irréversible.`
+    );
+    
+    if (confirmDelete) {
+      await deleteDocument();
+      showToast('Document supprimé');
+      navigate('/');
+    }
   };
 
   // Confirmation avant fermeture si changements non sauvegardés
