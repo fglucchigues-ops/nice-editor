@@ -74,10 +74,6 @@ export function useDocuments() {
   const saveDocument = useCallback(async () => {
     if (!db || !currentDocument) return;
     
-    if (!currentDocument.content.trim() && !currentDocument.title.trim()) {
-      return;
-    }
-    
     const savedDoc = await db.saveDocument(currentDocument);
     setCurrentDocument(savedDoc);
     setLastSavedContent(savedDoc.content);
