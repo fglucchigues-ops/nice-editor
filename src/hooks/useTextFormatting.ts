@@ -186,7 +186,7 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
       const anchor = document.createTextNode('\u200B');
       neutralSpan.appendChild(anchor);
       
-      const range = selection.getRangeAt(0);
+      range = selection.getRangeAt(0);
       range.insertNode(neutralSpan);
       
       const newRange = document.createRange();
