@@ -36,25 +36,22 @@ applyThemeImmediately();
 const pageVariants = {
   initial: {
     opacity: 0,
-    scale: 0.96,
-    y: 40
+    y: 8
   },
   in: {
     opacity: 1,
-    scale: 1,
     y: 0
   },
   out: {
     opacity: 0,
-    scale: 1.04,
-    y: -40
+    y: -8
   }
 };
 
 const pageTransition = {
   type: "tween",
-  ease: [0.25, 0.46, 0.45, 0.94], // Premium cubic bezier
-  duration: 0.5
+  ease: [0.4, 0, 0.2, 1], // Elegant ease-out
+  duration: 0.2
 };
 
 // Toast component
