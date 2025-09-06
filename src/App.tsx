@@ -63,7 +63,7 @@ function DocumentEditor() {
         navigate('/');
       }
     }
-  }, [id, documents, createDocument, openDocument, navigate]);
+  }, [id, createDocument, openDocument, navigate]);
 
   // Apply theme class to body
   useEffect(() => {
@@ -76,8 +76,8 @@ function DocumentEditor() {
 
   const handleSave = async () => {
     const savedDoc = await saveDocument();
-    // If we were on /document/new, redirect to the saved document's URL
-    if (id === 'new' && savedDoc?.id) {
+    // If we were on /document/new and document was saved successfully, redirect to the saved document's URL
+    if (id === 'new' && savedDoc && savedDoc.id) {
       navigate(`/document/${savedDoc.id}`, { replace: true });
     }
     showToast('Document sauvegardé');

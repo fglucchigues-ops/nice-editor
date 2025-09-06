@@ -72,7 +72,7 @@ export function useDocuments() {
   }, [currentDocument, lastSavedContent, documents]);
 
   const saveDocument = useCallback(async () => {
-    if (!db || !currentDocument) return;
+    if (!db || !currentDocument) return null;
     
     const savedDoc = await db.saveDocument(currentDocument);
     setCurrentDocument(savedDoc);
