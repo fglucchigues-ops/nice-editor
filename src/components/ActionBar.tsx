@@ -306,16 +306,16 @@ export function ActionBar({
             </button>
             
             {showExportMenu && (
-              <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 z-10">
+              <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 py-2 min-w-32 z-50">
                 <button
                   onClick={handleExportPDF}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-pointer"
                 >
                   PDF
                 </button>
                 <button
                   onClick={handleExportWord}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-pointer"
                 >
                   Word
                 </button>
@@ -328,7 +328,7 @@ export function ActionBar({
       {/* Click outside to close export menu */}
       {showExportMenu && (
         <div
-          className="fixed inset-0 z-30"
+          className="fixed inset-0 z-40"
           onClick={() => setShowExportMenu(false)}
         />
       )}

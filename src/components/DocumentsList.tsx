@@ -73,6 +73,23 @@ export function DocumentsList({
           </div>
         </div>
 
+        {/* Storage Warning */}
+        <div className="mb-8 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+          <div className="flex items-start gap-3">
+            <div className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5">
+              ⚠️
+            </div>
+            <div className="text-sm text-amber-800 dark:text-amber-200">
+              <p className="font-medium mb-1">Stockage local uniquement</p>
+              <p>
+                Vos documents sont sauvegardés dans ce navigateur. Si vous changez de navigateur, 
+                videz le cache ou supprimez les données de navigation, vous perdrez tous vos documents. 
+                Pensez à exporter régulièrement vos textes importants.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Search */}
         <div className="mb-8">
           <div className="relative max-w-md">

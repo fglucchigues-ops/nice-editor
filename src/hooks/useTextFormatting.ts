@@ -50,21 +50,6 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
         // Avec sélection, formatBlock sur la sélection
         document.execCommand('formatBlock', false, `h${level}`);
       }
-      
-      // Appliquer les styles CSS pour assurer la cohérence visuelle
-      setTimeout(() => {
-        if (editorRef.current) {
-          const headings = editorRef.current.querySelectorAll(`h${level}`);
-          headings.forEach(heading => {
-            const h = heading as HTMLElement;
-            h.style.fontSize = level === 1 ? '2em' : level === 2 ? '1.5em' : '1.25em';
-            h.style.fontWeight = 'bold';
-            h.style.lineHeight = '1.2';
-            h.style.margin = '1em 0 0.5em 0';
-            h.style.display = 'block';
-          });
-        }
-      }, 0);
     } catch (error) {
       console.error('Error formatting heading:', error);
     }
@@ -76,13 +61,38 @@ export function useTextFormatting(editorRef: RefObject<HTMLElement>) {
     
     if (colorToUse) {
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
+      if (!selection || selection.rangeCount === 0) {
+        // Pas de sélection - gérer le formatage pour le texte futur
+        const currentHighlight = getActiveHighlight();
+        
+        if (currentHighlight === color) {
+          // Même couleur - supprimer le surlignage
+          document.execCommand('hiliteColor', false, 'transparent');
+          // Remettre la couleur par défaut
+          const isDark = document.body.classList.contains('dark');
+          const defaultColor = isDark ? '#f3f4f6' : '#111827';
+          document.execCommand('foreColor', false, defaultColor);
+        } else {
+          // Couleur différente - appliquer la nouvelle couleur
+          document.execCommand('hiliteColor', false, colorToUse);
+          document.execCommand('foreColor', false, textColor);
+        }
+        return;
+      }
       
-      // Fonctionne avec ou sans sélection
-      document.execCommand('hiliteColor', false, colorToUse);
+      // Avec sélection - vérifier si c'est la même couleur
+      const currentHighlight = getActiveHighlight();
       
-      // Appliquer la couleur de texte blanche pour tous les surlignages
-      if (textColor) {
+      if (currentHighlight === color) {
+        // Même couleur - supprimer le surlignage
+        document.execCommand('hiliteColor', false, 'transparent');
+        // Remettre la couleur par défaut
+        const isDark = document.body.classList.contains('dark');
+        const defaultColor = isDark ? '#f3f4f6' : '#111827';
+        document.execCommand('foreColor', false, textColor);
+      } else {
+        // Couleur différente - appliquer la nouvelle couleur
+        document.execCommand('hiliteColor', false, colorToUse);
         document.execCommand('foreColor', false, textColor);
       }
     }
