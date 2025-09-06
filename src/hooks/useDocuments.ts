@@ -48,7 +48,7 @@ export function useDocuments() {
     };
     
     setCurrentDocument(newDoc);
-    setLastSavedContent(''); // Reset saved content reference
+    setLastSavedContent('');
     setHasUnsavedChanges(false);
   }, []);
 
@@ -59,7 +59,18 @@ export function useDocuments() {
   }, []);
 
   const updateDocument = useCallback((title: string, content: string) => {
-    if (!currentDocument) return;
+    if (!currentDocument) {
+      // Si pas de document courant, en créer un nouveau
+      const newDoc: Document = {
+        title,
+        content,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setCurrentDocument(newDoc);
+      setHasUnsavedChanges(true);
+      return;
+    }
     
     const updatedDoc = {
       ...currentDocument,
@@ -70,7 +81,7 @@ export function useDocuments() {
     
     setCurrentDocument(updatedDoc);
     
-    // Compare with the last saved version of this specific document
+    // Comparer avec la version sauvegardée de ce document spécifique
     const savedDoc = documents.find(d => d.id === currentDocument.id);
     const savedTitle = savedDoc?.title || '';
     const savedContent = savedDoc?.content || '';
@@ -78,7 +89,7 @@ export function useDocuments() {
     setHasUnsavedChanges(
       content !== savedContent || title !== savedTitle
     );
-  }, [currentDocument, lastSavedContent, documents]);
+  }, [currentDocument, documents]);
 
   const saveDocument = useCallback(async () => {
     if (!db || !currentDocument) return null;

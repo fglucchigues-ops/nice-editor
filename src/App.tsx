@@ -62,8 +62,11 @@ function DocumentEditor() {
         // Document not found, redirect to documents list
         navigate('/');
       }
+    } else {
+      // Pas d'ID, créer un nouveau document
+      createDocument();
     }
-  }, [id, createDocument, openDocument, navigate]);
+  }, [id, createDocument, openDocument, navigate, documents]);
 
   // Apply theme class to body
   useEffect(() => {
